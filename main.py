@@ -41,10 +41,10 @@ def get_original_localization_hierarchy(original_path: str) -> list:
 def make_new_language_hierarchy(new_translation_path, target_language, original_language, original_hierarchy):
     for file in original_hierarchy:
         target_file = file.replace(original_language, target_language)
-        target_path = os.path.join(new_translation_path, target_file)
-        if os.path.isdir(target_path) and not os.path.exists(os.path.dirname(target_path)):
-            os.makedirs(os.path.dirname(target_path))
-            print(f"Создана директория {os.path.dirname(target_path)}")
+        target_path = os.path.dirname(os.path.join(new_translation_path, target_file))
+        if not os.path.exists(target_path):
+            os.makedirs(target_path)
+            print(f"Создана директория {target_path}")
 
 
 def make_original_language_dictionary(original_language_lines: list) -> dict:
