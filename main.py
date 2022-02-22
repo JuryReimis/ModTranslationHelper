@@ -65,7 +65,7 @@ def make_original_language_dictionary(original_language_lines: list) -> dict:
 
 
 def translate_line(translator: GoogleTranslator | None, line: str) -> str:
-    if translator is None or line.isdigit():
+    if translator is None:
         return line + " #NT!\n"
     else:
         only_text = re.findall(pattern=r"\".+\"", string=line)
@@ -77,6 +77,8 @@ def translate_line(translator: GoogleTranslator | None, line: str) -> str:
                 print("Произошла ошибка с переводом строки:\n", line, "\n", e)
                 return line + " #Translation Error" + "\n"
         else:
+            if only_text[0][1:-1].isdigit():
+                return line + " #NT!\n"
             try:
                 modified_text, values_dict = modify_text(line=only_text[0], pattern=r"\[.*?\]", flag="modify")
                 if modified_text is None and values_dict is None:
