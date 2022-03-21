@@ -190,7 +190,7 @@ def main():
                 new_translate_list = ["" for _ in range(len(original_language_lines))]
                 amount_lines = len(original_language_dictionary)
                 for key, values in original_language_dictionary.items():
-                    print(f"Обработка строки №{key}/{amount_lines}",
+                    print(f"Обработка строки №{key + 1}/{amount_lines}",
                           f"файла {os.path.basename(full_original_path)}")
                     if key == 0:
                         new_translate_list[0] = "l_" + target_language + ":\n"
