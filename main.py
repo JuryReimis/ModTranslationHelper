@@ -128,12 +128,18 @@ def get_game_languages_path(game_path: str, original_language: str, target_langu
 
 
 def get_game_original_language_dictionary(path_to_original: str, path_to_target) -> [dict, dict]:
-    with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
-            open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
-        game_original_dictionary = make_language_dictionary(
-            original_language_lines=game_original_language_file.readlines())
-        game_target_dictionary = make_language_dictionary(
-            original_language_lines=game_target_language_file.readlines())
+    game_original_dictionary, game_target_dictionary = {}, {}
+    if os.path.exists(path_to_original) is True and os.path.exists(path_to_target) is True:
+        with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
+                open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
+            for line in game_original_language_file.readlines():
+                separated_line = re.findall(pattern=r"(.*) (\".+\")", string=line)
+                if separated_line:
+                    game_original_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
+            for line in game_target_language_file.readlines():
+                separated_line = re.findall(pattern=r"(.*) (\".+\")", string=line)
+                if separated_line:
+                    game_target_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
     return game_original_dictionary, game_target_dictionary
 
 
@@ -171,11 +177,10 @@ def main():
     start_time = time.time()
     for step in original_hierarchy:
         game_path_original_language_full = os.path.join(game_path_original_language, step)
-        if os.path.exists(game_path_original_language_full):
-            game_path_target_language_full = os.path.join(game_path_target_language,
-                                                          step.replace(original_language, target_language))
-            game_original_language_dictionary, game_target_language_dictionary = get_game_original_language_dictionary(
-                path_to_original=game_path_original_language_full, path_to_target=game_path_target_language_full)
+        game_path_target_language_full = os.path.join(game_path_target_language,
+                                                      step.replace(original_language, target_language))
+        game_original_language_dictionary, game_target_language_dictionary = get_game_original_language_dictionary(
+            path_to_original=game_path_original_language_full, path_to_target=game_path_target_language_full)
         full_original_path = os.path.join(original_language_path, step)
         full_new_path = os.path.join(new_translate_path, step.replace(original_language, target_language))
         if previous_translate_path is not None:
@@ -205,13 +210,20 @@ def main():
                     if key == 0:
                         new_translate_list[0] = previous_translate_dictionary["lang"]
                     else:
-                        response = previous_translate_dictionary.get(values["key"], None)
-                        if response is None and values["key"] != "transfer":
-                            new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
-                        elif values["key"] == "transfer":
-                            new_translate_list[key] = values["value"]
-                        else:
-                            new_translate_list[key] = previous_translate_dictionary[values["key"]]
+                        flag = False
+                        value = game_original_language_dictionary.get(values["key"], None)
+                        if value is not None:
+                            if value == values["value"]:
+                                new_translate_list[key] = game_target_language_dictionary.get(values["key"]) + "\n"
+                                flag = True
+                        if flag is False:
+                            response = previous_translate_dictionary.get(values["key"], None)
+                            if response is None and values["key"] != "transfer":
+                                new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
+                            elif values["key"] == "transfer":
+                                new_translate_list[key] = values["value"]
+                            else:
+                                new_translate_list[key] = previous_translate_dictionary[values["key"]]
                 print(*new_translate_list, end="", sep="", file=new_translate_file)
         else:
             with open(file=full_original_path, mode="r", encoding="utf-8-sig") as original_language_file, \
@@ -227,12 +239,19 @@ def main():
                     if key == 0:
                         new_translate_list[0] = "l_" + target_language + ":\n"
                     else:
-                        if values["value"].rstrip() == "":
-                            new_translate_list[key] = values["value"]
-                        else:
-                            new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
+                        flag = False
+                        value = game_original_language_dictionary.get(values["key"], None)
+                        if value is not None:
+                            if value == values["value"]:
+                                new_translate_list[key] = game_target_language_dictionary.get(values["key"]) + "\n"
+                                flag = True
+                        if flag is False:
+                            if values["value"].rstrip() == "":
+                                new_translate_list[key] = values["value"]
+                            else:
+                                new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
                 print(*new_translate_list, sep="", end="", file=new_translate_file)
-    print("Завершено за: ", time.strftime("%H:%M:%S", (time.localtime(time.time() - start_time))))
+    print("Завершено за: ", time.strftime("%H:%M:%S", (time.gmtime(time.time() - start_time))))
 
 
 if __name__ == "__main__":
