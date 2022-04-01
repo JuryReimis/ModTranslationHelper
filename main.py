@@ -1,3 +1,4 @@
+import pprint
 import re
 import os
 import sys
@@ -49,7 +50,12 @@ def make_new_language_hierarchy(new_translation_path, target_language, original_
             print(f"Создана директория {target_path}")
 
 
-def make_original_language_dictionary(original_language_lines: list) -> dict:
+def make_language_dictionary(original_language_lines: list) -> dict:
+    r"""Создает и возвращает словарь, состоящий из позиции, в качестве ключа и словаря, в качестве значения
+    Каждый словарь содержит пару ключей-значений: key: 'key', value: 'value'
+    К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
+                    'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+    Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value"""
     original_language_dictionary = {}
     num_str = 0
     for line in original_language_lines:
@@ -115,6 +121,22 @@ def modify_text(line: str, pattern: str | None, flag: str, values_dict: None | d
             sys.exit()
 
 
+def get_game_languages_path(game_path: str, original_language: str, target_language: str) -> [str, str]:
+    game_path_original_language = os.path.join(game_path, "localization", original_language)
+    game_path_target_language = os.path.join(game_path, "localization", target_language)
+    return game_path_original_language, game_path_target_language
+
+
+def get_game_original_language_dictionary(path_to_original: str, path_to_target) -> [dict, dict]:
+    with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
+            open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
+        game_original_dictionary = make_language_dictionary(
+            original_language_lines=game_original_language_file.readlines())
+        game_target_dictionary = make_language_dictionary(
+            original_language_lines=game_target_language_file.readlines())
+    return game_original_dictionary, game_target_dictionary
+
+
 def main():
     print("""Приветствую! Эта программа поможет вам справиться с локализацией многих модов.
     Основной проблемой при локализации является поиск новых строчек для перевода, автор может добавить новые события
@@ -128,6 +150,7 @@ def main():
         В какую папку программа поместит объединенные файлы(имеющие перевод и новые оригинальные) - new""")
     original_language_path = input("Введите путь к папке original. Должна заканчиваться на /localization/[language] ")
     original_language = os.path.basename(original_language_path)
+    game_path = input(r"Введите путь к папке игры, например: D:\Steam\steamapps\common\Crusader Kings III\game")
     all_languages = GoogleTranslator.get_supported_languages()
     print(*all_languages, sep="\n")
     target_language = input(f"Выберите язык из списка выше, на который будет производиться локализация ")
@@ -138,12 +161,21 @@ def main():
 
     previous_translate_path, new_translate_path, need_translate = get_previous_new_path(
         original_language=original_language, target_language=target_language)
+    game_path_original_language, game_path_target_language = get_game_languages_path(game_path=game_path,
+                                                                                     original_language=original_language,
+                                                                                     target_language=target_language)
     original_hierarchy = get_original_localization_hierarchy(original_path=original_language_path)
     make_new_language_hierarchy(new_translation_path=new_translate_path, original_hierarchy=original_hierarchy,
                                 original_language=original_language,
                                 target_language=target_language)  # Создает иерархию папок, как в оригинальной директории, где потом можно создать объединенные файлы
     start_time = time.time()
     for step in original_hierarchy:
+        game_path_original_language_full = os.path.join(game_path_original_language, step)
+        if os.path.exists(game_path_original_language_full):
+            game_path_target_language_full = os.path.join(game_path_target_language,
+                                                          step.replace(original_language, target_language))
+            game_original_language_dictionary, game_target_language_dictionary = get_game_original_language_dictionary(
+                path_to_original=game_path_original_language_full, path_to_target=game_path_target_language_full)
         full_original_path = os.path.join(original_language_path, step)
         full_new_path = os.path.join(new_translate_path, step.replace(original_language, target_language))
         if previous_translate_path is not None:
@@ -163,7 +195,7 @@ def main():
                     if line.lstrip() != "":
                         previous_translate_dictionary[line.split()[0]] = line
 
-                original_language_dictionary = make_original_language_dictionary(
+                original_language_dictionary = make_language_dictionary(
                     original_language_lines=original_language_lines)
                 amount_lines = len(original_language_dictionary)
                 for key, values in original_language_dictionary.items():
@@ -185,7 +217,7 @@ def main():
             with open(file=full_original_path, mode="r", encoding="utf-8-sig") as original_language_file, \
                     open(file=full_new_path, mode="w", encoding="utf-8-sig") as new_translate_file:
                 original_language_lines = original_language_file.readlines()
-                original_language_dictionary = make_original_language_dictionary(
+                original_language_dictionary = make_language_dictionary(
                     original_language_lines=original_language_lines)
                 new_translate_list = ["" for _ in range(len(original_language_lines))]
                 amount_lines = len(original_language_dictionary)
