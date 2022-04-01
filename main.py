@@ -1,4 +1,3 @@
-import pprint
 import re
 import os
 import sys
@@ -219,7 +218,8 @@ def main():
                         if flag is False:
                             response = previous_translate_dictionary.get(values["key"], None)
                             if response is None and values["key"] != "transfer":
-                                new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
+                                new_translate_list[key] = translate_line(translator=need_translate,
+                                                                         line=values["value"])
                             elif values["key"] == "transfer":
                                 new_translate_list[key] = values["value"]
                             else:
@@ -249,7 +249,8 @@ def main():
                             if values["value"].rstrip() == "":
                                 new_translate_list[key] = values["value"]
                             else:
-                                new_translate_list[key] = translate_line(translator=need_translate, line=values["value"])
+                                new_translate_list[key] = translate_line(translator=need_translate,
+                                                                         line=values["value"])
                 print(*new_translate_list, sep="", end="", file=new_translate_file)
     print("Завершено за: ", time.strftime("%H:%M:%S", (time.gmtime(time.time() - start_time))))
 
