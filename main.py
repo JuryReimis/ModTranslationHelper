@@ -60,16 +60,17 @@ def make_language_dictionary(original_language_lines: list) -> dict:
     for line in original_language_lines:
         separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
         if separated_line:
-            key, value = separated_line[0]
+            key = separated_line[0][0]
         else:
             key = "not_program_data"
-            value = line
+        value = line
         original_language_dictionary[num_str] = {"key": key, "value": value}
         num_str += 1
     return original_language_dictionary
 
 
 def translate_line(translator: GoogleTranslator | None, line: str) -> str:
+    line = line.rstrip()
     if translator is None:
         return line + " #NT!\n"
     else:
@@ -182,7 +183,7 @@ def main():
             path_to_original=game_path_original_language_full, path_to_target=game_path_target_language_full)
         full_original_path = os.path.join(original_language_path, step)
         full_new_path = os.path.join(new_translate_path, step.replace(original_language, target_language))
-        if previous_translate_path is not None:
+        if previous_translate_path is not None and os.path.isfile(os.path.join(previous_translate_path, step.replace(original_language, target_language))):
             full_previous_path = os.path.join(previous_translate_path, step.replace(original_language, target_language))
             with open(file=full_previous_path, mode="r",
                       encoding="utf-8-sig") as previous_translate_file, \
@@ -219,8 +220,8 @@ def main():
                         if flag is False:
                             response = previous_translate_dictionary.get(values["key"], None)
                             if response is None and values["key"] != "not_program_data":
-                                new_translate_list[key] = translate_line(translator=need_translate,
-                                                                         line=values["value"])
+                                new_translate_list[key] = " ".join((values["key"], translate_line(translator=need_translate,
+                                                                         line=values["value"])))
                             elif values["key"] == "not_program_data":
                                 new_translate_list[key] = values["value"]
                             else:
