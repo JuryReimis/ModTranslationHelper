@@ -58,7 +58,7 @@ def make_language_dictionary(original_language_lines: list) -> dict:
     original_language_dictionary = {}
     num_str = 0
     for line in original_language_lines:
-        separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+        separated_line = re.findall(pattern=r"(.*:)(.*) (\".*\")", string=line)
         if separated_line:
             key = separated_line[0][0]
         else:
@@ -133,11 +133,11 @@ def get_game_original_language_dictionary(path_to_original: str, path_to_target)
         with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
                 open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
             for line in game_original_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+                separated_line = re.findall(pattern=r"(.*:)(.*) (\".*\")", string=line)
                 if separated_line:
                     game_original_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
             for line in game_target_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+                separated_line = re.findall(pattern=r"(.*:)(.*) (\".*\")", string=line)
                 if separated_line:
                     game_target_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
     return game_original_dictionary, game_target_dictionary
@@ -197,7 +197,7 @@ def main():
                 previous_translate_file.readline()
                 previous_translate_lines = previous_translate_file.readlines()
                 for line in previous_translate_lines:
-                    separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+                    separated_line = re.findall(pattern=r"(.*:)(.*) (\".*\")", string=line)
                     if separated_line:
                         previous_translate_dictionary[separated_line[0][0]] = line
 
