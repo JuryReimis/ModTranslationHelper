@@ -58,12 +58,12 @@ def make_language_dictionary(original_language_lines: list) -> dict:
     original_language_dictionary = {}
     num_str = 0
     for line in original_language_lines:
-        if line.lstrip() != "":
-            key = line.split()[0]
-            value = line.rstrip()
+        separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+        if separated_line:
+            key, value = separated_line[0]
         else:
-            key = "transfer"
-            value = "\n"
+            key = "not_program_data"
+            value = line
         original_language_dictionary[num_str] = {"key": key, "value": value}
         num_str += 1
     return original_language_dictionary
@@ -132,11 +132,11 @@ def get_game_original_language_dictionary(path_to_original: str, path_to_target)
         with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
                 open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
             for line in game_original_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*) (\".+\")", string=line)
+                separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
                 if separated_line:
                     game_original_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
             for line in game_target_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*) (\".+\")", string=line)
+                separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
                 if separated_line:
                     game_target_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
     return game_original_dictionary, game_target_dictionary
@@ -155,7 +155,7 @@ def main():
         В какую папку программа поместит объединенные файлы(имеющие перевод и новые оригинальные) - new""")
     original_language_path = input("Введите путь к папке original. Должна заканчиваться на /localization/[language] ")
     original_language = os.path.basename(original_language_path)
-    game_path = input(r"Введите путь к папке игры, например: D:\Steam\steamapps\common\Crusader Kings III\game")
+    game_path = input(r"Введите путь к папке игры, например: D:\Steam\steamapps\common\Crusader Kings III\game ")
     all_languages = GoogleTranslator.get_supported_languages()
     print(*all_languages, sep="\n")
     target_language = input(f"Выберите язык из списка выше, на который будет производиться локализация ")
@@ -196,8 +196,9 @@ def main():
                 previous_translate_file.readline()
                 previous_translate_lines = previous_translate_file.readlines()
                 for line in previous_translate_lines:
-                    if line.lstrip() != "":
-                        previous_translate_dictionary[line.split()[0]] = line
+                    separated_line = re.findall(pattern=r"(.*) (\".*\")", string=line)
+                    if separated_line:
+                        previous_translate_dictionary[separated_line[0][0]] = line
 
                 original_language_dictionary = make_language_dictionary(
                     original_language_lines=original_language_lines)
@@ -217,10 +218,10 @@ def main():
                                 flag = True
                         if flag is False:
                             response = previous_translate_dictionary.get(values["key"], None)
-                            if response is None and values["key"] != "transfer":
+                            if response is None and values["key"] != "not_program_data":
                                 new_translate_list[key] = translate_line(translator=need_translate,
                                                                          line=values["value"])
-                            elif values["key"] == "transfer":
+                            elif values["key"] == "not_program_data":
                                 new_translate_list[key] = values["value"]
                             else:
                                 new_translate_list[key] = previous_translate_dictionary[values["key"]]
@@ -241,9 +242,10 @@ def main():
                     else:
                         flag = False
                         value = game_original_language_dictionary.get(values["key"], None)
-                        if value is not None:
+                        target_value = game_target_language_dictionary.get(values["key"], None)
+                        if value is not None and target_value is not None:
                             if value == values["value"]:
-                                new_translate_list[key] = game_target_language_dictionary.get(values["key"]) + "\n"
+                                new_translate_list[key] = target_value + "\n"
                                 flag = True
                         if flag is False:
                             if values["value"].rstrip() == "":
