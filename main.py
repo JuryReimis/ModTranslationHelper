@@ -60,7 +60,7 @@ def make_language_dictionary(original_language_lines: list) -> dict:
     for line in original_language_lines:
         separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
         if separated_line:
-            key = separated_line[0][0]
+            key = separated_line[0][0].lstrip()
         else:
             key = "not_program_data"
         value = line
@@ -135,11 +135,11 @@ def get_game_original_language_dictionary(path_to_original: str, path_to_target)
             for line in game_original_language_file.readlines():
                 separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
                 if separated_line:
-                    game_original_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
+                    game_original_dictionary[separated_line[0][0].lstrip()] = line
             for line in game_target_language_file.readlines():
                 separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
                 if separated_line:
-                    game_target_dictionary[separated_line[0][0].lstrip()] = line.rstrip()
+                    game_target_dictionary[separated_line[0][0].lstrip()] = line
     return game_original_dictionary, game_target_dictionary
 
 
@@ -199,7 +199,7 @@ def main():
                 for line in previous_translate_lines:
                     separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
                     if separated_line:
-                        previous_translate_dictionary[separated_line[0][0]] = line
+                        previous_translate_dictionary[separated_line[0][0].lstrip()] = line
 
                 original_language_dictionary = make_language_dictionary(
                     original_language_lines=original_language_lines)
