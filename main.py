@@ -58,7 +58,7 @@ def make_language_dictionary(original_language_lines: list) -> dict:
     original_language_dictionary = {}
     num_str = 0
     for line in original_language_lines:
-        separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
+        separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
         if separated_line:
             key = separated_line[0][0].lstrip()
         else:
@@ -76,12 +76,7 @@ def translate_line(translator: GoogleTranslator | None, line: str) -> str:
     else:
         only_text = re.findall(pattern=r"\".+\"", string=line)
         if not only_text:
-            try:
-                not_content_string = translator.translate(text=line)
-                return not_content_string + "\n"
-            except Exception as e:
-                print("Произошла ошибка с переводом строки:\n", line, "\n", e)
-                return line + " #Translation Error" + "\n"
+            return line + "\n"
         else:
             if only_text[0][1:-1].isdigit():
                 return line + " #NT!\n"
@@ -133,11 +128,11 @@ def get_game_original_language_dictionary(path_to_original: str, path_to_target)
         with open(file=path_to_original, mode="r", encoding="utf-8-sig") as game_original_language_file, \
                 open(file=path_to_target, mode="r", encoding="utf-8-sig") as game_target_language_file:
             for line in game_original_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
+                separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
                 if separated_line:
                     game_original_dictionary[separated_line[0][0].lstrip()] = line
             for line in game_target_language_file.readlines():
-                separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
+                separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
                 if separated_line:
                     game_target_dictionary[separated_line[0][0].lstrip()] = line
     return game_original_dictionary, game_target_dictionary
@@ -197,7 +192,7 @@ def main():
                 previous_translate_file.readline()
                 previous_translate_lines = previous_translate_file.readlines()
                 for line in previous_translate_lines:
-                    separated_line = re.findall(pattern=r"(.*:)(.*)( *)(\".*\")", string=line)
+                    separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
                     if separated_line:
                         previous_translate_dictionary[separated_line[0][0].lstrip()] = line
 
@@ -215,7 +210,7 @@ def main():
                         value = game_original_language_dictionary.get(values["key"], None)
                         if value is not None:
                             if value == values["value"]:
-                                new_translate_list[key] = game_target_language_dictionary.get(values["key"]) + "\n"
+                                new_translate_list[key] = game_target_language_dictionary.get(values["key"])
                                 flag = True
                         if flag is False:
                             response = previous_translate_dictionary.get(values["key"], None)
