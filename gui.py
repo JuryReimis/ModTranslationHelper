@@ -52,6 +52,15 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.target_directory_lineEdit.setText(chosen_path)
         self.last_selected_directory = chosen_path
 
+    def form_checkbox_cascade(self, files: list):
+        vertical_layout_widget = QtWidgets.QWidget()
+        vertical_layout = QtWidgets.QVBoxLayout(vertical_layout_widget)
+        for file_name in files:
+            check_box = QtWidgets.QCheckBox(file_name)
+            vertical_layout.addWidget(check_box)
+        vertical_layout_widget.setLayout(vertical_layout)
+        self.ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
+
     def run(self):
         pass
 
