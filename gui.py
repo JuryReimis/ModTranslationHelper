@@ -12,6 +12,11 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.last_selected_directory = '/'
+        for language in GoogleTranslator.get_supported_languages():
+            self.ui.selector_original_language_comboBox.addItem(language)
+            self.ui.selector_target_language_comboBox.addItem(language)
+        self.ui.selector_original_language_comboBox.setCurrentText('english')
+        self.ui.selector_target_language_comboBox.setCurrentText('russian')
 
         self.ui.game_directory_pushButton.clicked.connect(self.select_game_directory)
         self.ui.original_directory_pushButton.clicked.connect(self.select_original_directory)
