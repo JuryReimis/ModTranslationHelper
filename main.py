@@ -5,6 +5,33 @@ import time
 from deep_translator import GoogleTranslator
 
 
+class Prepper:
+
+    def __init__(self, game_path: str, original_mode_path: str, target_path: str, previous_path: str):
+        self._game_path = game_path
+        self._original_mode_path = original_mode_path
+        self._target_path = target_path
+        self._previous_path = previous_path
+
+
+class Validator:
+
+    def __init__(self):
+        pass
+
+    def validate_game_path(self, path: str):
+        pass
+
+    def validate_original_path(self, path: str):
+        pass
+
+    def validate_target_path(self, path: str):
+        pass
+
+    def validate_previous_path(self, path: str):
+        pass
+
+
 def get_previous_new_path(original_language: str, target_language: str) -> [str, str, bool]:
     was_previous = input("У вас есть предыдущая версия локализации? y/n ")
     match was_previous.lower():
@@ -143,7 +170,7 @@ def main():
     Основной проблемой при локализации является поиск новых строчек для перевода, автор может добавить новые события
     посреди огромного списка, и поиск этих новых строчек занимает больше времени, чем сам перевод.
     Это программа написана для облегчения поиска новых строчек. Сейчас коротко опишу принцип работы.
-    В результате выполнения вы получите идентичную оригинальной иерархию файлов с локализацие, в которой будут помечены
+    В результате выполнения вы получите идентичную оригинальной иерархию файлов с локализации, в которой будут помечены
     непереведенные строчки, а переведенные сохранены.
     Чтобы запустить программу вам нужно знать некоторую информацию:
         Из какой папки программа должна взять оригинальную локализацию - original
