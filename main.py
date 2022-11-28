@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 import os
 import sys
@@ -7,11 +8,31 @@ from deep_translator import GoogleTranslator
 
 class Prepper:
 
-    def __init__(self, game_path: str, original_mode_path: str, target_path: str, previous_path: str):
+    def __init__(self, game_path: Path = None, original_mode_path: Path = None,
+                 target_path: Path = None, previous_path: Path = None):
         self._game_path = game_path
         self._original_mode_path = original_mode_path
         self._target_path = target_path
         self._previous_path = previous_path
+
+    def set_game_path(self, game_path: Path):
+        self._game_path = game_path
+
+    def set_original_mode_path(self, original_mode_path):
+        self._original_mode_path = original_mode_path
+
+    def set_target_path(self, target_path):
+        self._target_path = target_path
+
+    def set_previous_path(self, previous_path):
+        self._previous_path = previous_path
+
+    def get_original_localization_hierarchy(self) -> list:
+        hierarchy = []
+        for step in self._original_mode_path.rglob('*'):
+            if step.is_file():
+                hierarchy.append(step.relative_to(self._original_mode_path))
+        return hierarchy
 
 
 class Validator:
@@ -22,8 +43,12 @@ class Validator:
     def validate_game_path(self, path: str):
         pass
 
-    def validate_original_path(self, path: str):
-        pass
+    @staticmethod
+    def validate_original_path(path: Path):
+        if path.exists():
+            return True
+        else:
+            return False
 
     def validate_target_path(self, path: str):
         pass
