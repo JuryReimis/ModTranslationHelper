@@ -15,24 +15,36 @@ class Prepper:
         self._target_path = target_path
         self._previous_path = previous_path
 
-    def set_game_path(self, game_path: Path):
-        self._game_path = game_path
+        self._file_hierarchy = []
+
+        self.validator = Validator()
+
+        self.game_path_validate_result = False
+        self.original_mode_path_validate_result = False
+        self.previous_path_validate_result = False
+        self.target_path_validate_result = False
+
+    def set_game_path(self, game_path: str):
+        self._game_path = Path(game_path)
+        self.game_path_validate_result = self.validator.validate_game_path(self._game_path)
 
     def set_original_mode_path(self, original_mode_path):
-        self._original_mode_path = original_mode_path
+        self._original_mode_path = Path(original_mode_path)
+        self.original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
 
-    def set_target_path(self, target_path):
-        self._target_path = target_path
+    def set_previous_path(self, previous_path: str):
+        self._previous_path = Path(previous_path)
+        self.previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
 
-    def set_previous_path(self, previous_path):
-        self._previous_path = previous_path
+    def set_target_path(self, target_path: str):
+        self._target_path = Path(target_path)
+        self.target_path_validate_result = self.validator.validate_target_path(self._target_path)
 
     def get_original_localization_hierarchy(self) -> list:
-        hierarchy = []
         for step in self._original_mode_path.rglob('*'):
             if step.is_file():
-                hierarchy.append(step.relative_to(self._original_mode_path))
-        return hierarchy
+                self._file_hierarchy.append(step.relative_to(self._original_mode_path))
+        return self._file_hierarchy
 
 
 class Validator:
@@ -40,21 +52,30 @@ class Validator:
     def __init__(self):
         pass
 
-    def validate_game_path(self, path: str):
-        pass
-
     @staticmethod
-    def validate_original_path(path: Path):
+    def __path_existence(path: Path):
         if path.exists():
             return True
         else:
             return False
 
-    def validate_target_path(self, path: str):
-        pass
+    def validate_game_path(self, path: Path):
+        path_existence = self.__path_existence(path)
+        return path_existence
 
-    def validate_previous_path(self, path: str):
-        pass
+    def validate_original_path(self, path: Path):
+        path_existence = self.__path_existence(path)
+        print('path_existence: ', path_existence)
+        return path_existence
+
+    def validate_previous_path(self, path: Path):
+        path_existence = self.__path_existence(path)
+        return path_existence
+
+    @staticmethod
+    def validate_target_path(path: Path):
+        path_existence = Path(path.drive).exists() and re.findall('.+:.+', str(path))
+        return path_existence
 
 
 def get_previous_new_path(original_language: str, target_language: str) -> [str, str, bool]:
@@ -305,5 +326,5 @@ def main():
     print("Завершено за: ", time.strftime("%H:%M:%S", (time.gmtime(time.time() - start_time))))
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
