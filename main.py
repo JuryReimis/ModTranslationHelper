@@ -16,6 +16,7 @@ class Prepper:
         self._previous_path = previous_path
 
         self._file_hierarchy = []
+        self._file_hierarchy_only_dirs = []
 
         self.validator = Validator()
 
@@ -65,10 +66,17 @@ class Prepper:
         return self._target_path_validate_result
 
     def get_original_localization_hierarchy(self) -> list:
+        r"""Возвращается путь ко всем файлам, относительно пути, расположения локализации основного мода.
+        Названия файлов не изменены под новый(target_language) язык"""
         for step in self._original_mode_path.rglob('*'):
             if step.is_file():
                 self._file_hierarchy.append(step.relative_to(self._original_mode_path))
+            elif step.is_dir():
+                self._file_hierarchy_only_dirs.append(step.relative_to(self._original_mode_path))
         return self._file_hierarchy
+
+    def get_file_hierarchy_only_dirs(self):
+        return self._file_hierarchy_only_dirs
 
 
 class Validator:
@@ -104,10 +112,45 @@ class Validator:
 
 class Performer:
 
-    def __init__(self, paths: Prepper, original_language: str, target_language: str):
+    def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None):
         self.paths = paths
         self.original_language = original_language
         self.target_language = target_language
+
+        self.__create_directory_hierarchy()
+
+        match self.paths.get_previous_path_validate_result():
+            case True:
+                self.__start_with_previous()
+            case False:
+                self.__start_without_previous()
+
+    def __create_directory_hierarchy(self):
+        if not self.paths.get_target_path().exists():
+            flag_is_exist = False
+            parent = self.paths.get_target_path()
+            item = 0
+            while flag_is_exist is False:
+                name = parent.name
+                parent = parent.parent
+                if parent.exists():
+                    (parent / name).mkdir()
+                    print(f'Создана папка {name}')
+                    parent = self.paths.get_target_path()
+                if self.paths.get_target_path().exists():
+                    flag_is_exist = True
+                item += 1
+        for directory in self.paths.get_file_hierarchy_only_dirs():
+            directory: Path
+            if not (self.paths.get_target_path() / directory).exists():
+                (self.paths.get_target_path() / directory).mkdir()
+                print(f'Создана папка {directory}')
+
+    def __start_without_previous(self):
+        pass
+
+    def __start_with_previous(self):
+        pass
 
 
 def get_previous_new_path(original_language: str, target_language: str) -> [str, str, bool]:
