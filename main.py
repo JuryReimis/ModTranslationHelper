@@ -117,6 +117,9 @@ class Performer:
         self.original_language = original_language
         self.target_language = target_language
 
+        self.__original_language_dictionary = {}
+        self.__current_original_lines = []
+
         self.__create_directory_hierarchy()
 
         match self.paths.get_previous_path_validate_result():
@@ -145,6 +148,24 @@ class Performer:
             if not (self.paths.get_target_path() / directory).exists():
                 (self.paths.get_target_path() / directory).mkdir()
                 print(f'Создана папка {directory}')
+
+    def __create_original_language_dictionary(self):
+        r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
+        Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
+        К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
+                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value"""
+        self.__original_language_dictionary = {}
+        num_str = 0
+        for line in self.__current_original_lines:
+            separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
+            if separated_line:
+                key = separated_line[0][0].lstrip()
+            else:
+                key = "not_program_data"
+            value = line
+            self.__original_language_dictionary[num_str] = {"key": key, "value": value}
+            num_str += 1
 
     def __start_without_previous(self):
         pass
