@@ -19,26 +19,50 @@ class Prepper:
 
         self.validator = Validator()
 
-        self.game_path_validate_result = False
-        self.original_mode_path_validate_result = False
-        self.previous_path_validate_result = False
-        self.target_path_validate_result = False
+        self._game_path_validate_result = False
+        self._original_mode_path_validate_result = False
+        self._previous_path_validate_result = False
+        self._target_path_validate_result = False
 
     def set_game_path(self, game_path: str):
         self._game_path = Path(game_path)
-        self.game_path_validate_result = self.validator.validate_game_path(self._game_path)
+        self._game_path_validate_result = self.validator.validate_game_path(self._game_path)
+
+    def get_game_path(self) -> Path:
+        return self._game_path
+
+    def get_game_path_validate_result(self) -> bool:
+        return self._game_path_validate_result
 
     def set_original_mode_path(self, original_mode_path):
         self._original_mode_path = Path(original_mode_path)
-        self.original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
+        self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
+
+    def get_original_mode_path(self) -> Path:
+        return self._original_mode_path
+
+    def get_original_mode_path_validate_result(self) -> bool:
+        return self._original_mode_path_validate_result
 
     def set_previous_path(self, previous_path: str):
         self._previous_path = Path(previous_path)
-        self.previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
+        self._previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
+
+    def get_previous_path(self) -> Path:
+        return self._previous_path
+
+    def get_previous_path_validate_result(self) -> bool:
+        return self._previous_path_validate_result
 
     def set_target_path(self, target_path: str):
         self._target_path = Path(target_path)
-        self.target_path_validate_result = self.validator.validate_target_path(self._target_path)
+        self._target_path_validate_result = self.validator.validate_target_path(self._target_path)
+
+    def get_target_path(self) -> Path:
+        return self._target_path
+
+    def get_target_path_validate_result(self) -> bool:
+        return self._target_path_validate_result
 
     def get_original_localization_hierarchy(self) -> list:
         for step in self._original_mode_path.rglob('*'):
@@ -76,6 +100,14 @@ class Validator:
     def validate_target_path(path: Path):
         path_existence = Path(path.drive).exists() and re.findall('.+:.+', str(path))
         return path_existence
+
+
+class Performer:
+
+    def __init__(self, paths: Prepper, original_language: str, target_language: str):
+        self.paths = paths
+        self.original_language = original_language
+        self.target_language = target_language
 
 
 def get_previous_new_path(original_language: str, target_language: str) -> [str, str, bool]:
