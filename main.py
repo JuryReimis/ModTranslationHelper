@@ -130,6 +130,7 @@ class Performer:
         self.__original_vanilla_dictionary = {}
         self.__target_vanilla_dictionary = {}
         self.__previous_version_dictionary = {}
+        self.__modified_values = {}
 
         self.__create_directory_hierarchy()
 
@@ -199,6 +200,50 @@ class Performer:
                     if localization_key is not None:
                         self.__previous_version_dictionary[localization_key] = line
 
+    def __translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
+        r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
+        if translator is None:
+            return line + " #NT!\n"
+        else:
+            localization_value = self.__get_localization_value(line=line)
+            if localization_value is None:
+                return line + "\n"
+            else:
+                try:
+                    modified_line = self.__modify_line(line=localization_value, flag="modify")
+                    if modified_line is None:
+                        return line + "#NT!\n"
+                    translated_line = translator.translate(text=modified_line[1:-1])
+                    normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
+                    return line + f" <\"{normal_string}\">" + " #NT!\n"
+                except Exception as e:
+                    print("Произошла ошибка с переводом строки:\n", line, "\n", e)
+                    return line + " #Translation Error!" + "\n"
+
+    def __modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
+        r"""При флаге "modify" позволяет заменить некоторые части строки по шаблону на скрытую, ничего не обозначающую
+        переменную. При флаге "return_normal_view" позволяет вернуть нормальный вид строки по словарю параметров"""
+        match flag:
+            case "modify":
+                self.__modified_values = {}
+                shadow_number = 0
+                regular_groups = re.findall(pattern=pattern, string=line)
+                if regular_groups:
+                    for step in regular_groups:
+                        self.__modified_values[f"[{shadow_number}]"] = step
+                        line = line.replace(step, f"[{shadow_number}]")
+                        shadow_number += 1
+                    return line
+                else:
+                    return None
+            case "return_normal_view":
+                for key, value in self.__modified_values.items():
+                    line = line.replace(key, value)
+                return line
+            case _:
+                print("Ошибка при модификации, флаг нечитаем")
+                sys.exit()
+
     @staticmethod
     def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
         separated_line = re.findall(pattern=pattern, string=line)
@@ -206,6 +251,12 @@ class Performer:
             return separated_line[0][0].lstrip()
         else:
             return None
+
+    @staticmethod
+    def __get_localization_value(pattern: str = r'(\".*\D+?.*\")', line: str = ''):
+        value = re.findall(pattern=pattern, string=line)
+        if value:
+            return value[0]
 
     def __start_without_previous(self):
         pass
