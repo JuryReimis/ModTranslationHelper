@@ -57,7 +57,7 @@ class MyWindow(QtWidgets.QMainWindow):
 
     def original_directory_changed(self):
         self.prepper.set_original_mode_path(self.ui.original_directory_lineEdit.text())
-        self.form_checkbox_cascade(self.prepper.original_mode_path_validate_result)
+        self.form_checkbox_cascade(self.prepper.get_original_mode_path_validate_result())
 
     def select_previous_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -77,7 +77,7 @@ class MyWindow(QtWidgets.QMainWindow):
 
     def target_directory_changed(self, ):
         self.prepper.set_target_path(self.ui.target_directory_lineEdit.text())
-        if not self.prepper.target_path_validate_result:
+        if not self.prepper.get_target_path_validate_result():
             error = CustomDialog(parent=self.ui.centralwidget,
                                  text='Невозможно получить доступ к диск. Проверьте путь к папке, в которую '
                                       'собираетесь записать перевод')
