@@ -27,6 +27,7 @@ class Prepper:
         self._target_path_validate_result = False
 
     def set_game_path(self, game_path: str):
+        r"""Должен формировать путь до папки с локализациями (game/localization, localisation и т.п.)"""
         self._game_path = Path(game_path)
         self._game_path_validate_result = self.validator.validate_game_path(self._game_path)
 
@@ -120,26 +121,28 @@ class Validator:
 class Performer:
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None):
-        self.paths = paths
-        self.original_language = original_language
-        self.target_language = target_language
+        self.__paths = paths
+        self.__original_language = original_language
+        self.__target_language = target_language
 
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
+        self.__original_vanilla_dictionary = {}
+        self.__target_vanilla_dictionary = {}
         self.__previous_version_dictionary = {}
 
         self.__create_directory_hierarchy()
 
-        match self.paths.get_previous_path_validate_result():
+        match self.__paths.get_previous_path_validate_result():
             case True:
                 self.__start_with_previous()
             case False:
                 self.__start_without_previous()
 
     def __create_directory_hierarchy(self):
-        if not self.paths.get_target_path().exists():
+        if not self.__paths.get_target_path().exists():
             flag_is_exist = False
-            parent = self.paths.get_target_path()
+            parent = self.__paths.get_target_path()
             item = 0
             while flag_is_exist is False:
                 name = parent.name
@@ -147,14 +150,14 @@ class Performer:
                 if parent.exists():
                     (parent / name).mkdir()
                     print(f'Создана папка {name}')
-                    parent = self.paths.get_target_path()
-                if self.paths.get_target_path().exists():
+                    parent = self.__paths.get_target_path()
+                if self.__paths.get_target_path().exists():
                     flag_is_exist = True
                 item += 1
-        for directory in self.paths.get_file_hierarchy_only_dirs():
+        for directory in self.__paths.get_file_hierarchy_only_dirs():
             directory: Path
-            if not (self.paths.get_target_path() / directory).exists():
-                (self.paths.get_target_path() / directory).mkdir()
+            if not (self.__paths.get_target_path() / directory).exists():
+                (self.__paths.get_target_path() / directory).mkdir()
                 print(f'Создана папка {directory}')
 
     def __create_original_language_dictionary(self):
@@ -172,9 +175,23 @@ class Performer:
             self.__original_language_dictionary[num_str] = {"key": key, "value": line}
             num_str += 1
 
+    def __create_game_localization_dictionary(self):
+        original_vanilla_path = self.__paths.get_game_path() / self.__original_language
+        target_vanilla_path = self.__paths.get_game_path() / self.__target_language
+        with original_vanilla_path.open(mode='r', encoding='utf-8-sig') as original_language_vanilla_file,\
+                target_vanilla_path.open(mode='r', encoding='utf-8-sig') as target_language_vanilla_file:
+            for line in original_language_vanilla_file.readlines():
+                localization_key = self.__get_localization_key(line=line)
+                if localization_key is not None:
+                    self.__original_vanilla_dictionary[localization_key] = line
+            for line in target_language_vanilla_file.readlines():
+                localization_key = self.__get_localization_key(line=line)
+                if localization_key is not None:
+                    self.__target_vanilla_dictionary[localization_key] = line
+
     def __create_previous_version_dictionary(self):
-        self.__previous_version_dictionary = {"lang": "l_" + self.target_language + ":\n"}
-        for file in self.paths.get_previous_files():
+        self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
+        for file in self.__paths.get_previous_files():
             file: Path
             with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
                 for line in file_with_previous_version.readlines():
@@ -183,10 +200,12 @@ class Performer:
                         self.__previous_version_dictionary[localization_key] = line
 
     @staticmethod
-    def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str:
+    def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
         separated_line = re.findall(pattern=pattern, string=line)
         if separated_line:
             return separated_line[0][0].lstrip()
+        else:
+            return None
 
     def __start_without_previous(self):
         pass
