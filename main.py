@@ -17,6 +17,7 @@ class Prepper:
 
         self._file_hierarchy = []
         self._file_hierarchy_only_dirs = []
+        self._previous_files = []
 
         self.validator = Validator()
 
@@ -78,6 +79,12 @@ class Prepper:
     def get_file_hierarchy_only_dirs(self):
         return self._file_hierarchy_only_dirs
 
+    def get_previous_files(self):
+        for step in self._previous_path.rglob('*'):
+            if step.is_file():
+                self._previous_files.append(step)
+        return self._previous_files
+
 
 class Validator:
 
@@ -119,6 +126,7 @@ class Performer:
 
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
+        self.__previous_version_dictionary = {}
 
         self.__create_directory_hierarchy()
 
@@ -158,14 +166,27 @@ class Performer:
         self.__original_language_dictionary = {}
         num_str = 0
         for line in self.__current_original_lines:
-            separated_line = re.findall(pattern=r"(.*:)(\d*)( *)(\".*\")", string=line)
-            if separated_line:
-                key = separated_line[0][0].lstrip()
-            else:
+            key = self.__get_localization_key(line=line)
+            if key is None:
                 key = "not_program_data"
-            value = line
-            self.__original_language_dictionary[num_str] = {"key": key, "value": value}
+            self.__original_language_dictionary[num_str] = {"key": key, "value": line}
             num_str += 1
+
+    def __create_previous_version_dictionary(self):
+        self.__previous_version_dictionary = {"lang": "l_" + self.target_language + ":\n"}
+        for file in self.paths.get_previous_files():
+            file: Path
+            with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
+                for line in file_with_previous_version.readlines():
+                    localization_key = self.__get_localization_key(line=line)
+                    if localization_key is not None:
+                        self.__previous_version_dictionary[localization_key] = line
+
+    @staticmethod
+    def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str:
+        separated_line = re.findall(pattern=pattern, string=line)
+        if separated_line:
+            return separated_line[0][0].lstrip()
 
     def __start_without_previous(self):
         pass
