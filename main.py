@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import time
+from PyQt5.QtCore import QObject, pyqtSignal
 from deep_translator import GoogleTranslator
 
 
@@ -118,9 +119,11 @@ class Validator:
         return path_existence
 
 
-class Performer:
+class Performer(QObject):
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None):
+        super(Performer, self).__init__()
+        self.__signal = pyqtSignal()
         self.__paths = paths
         self.__original_language = original_language
         self.__target_language = target_language
@@ -200,7 +203,17 @@ class Performer:
         if line_number == 0:
             self.__translated_list[0] = "l_" + self.__target_language + ":\n"
         else:
-            self.__translated_list[line_number] = self.__compare_with_vanilla(key_value=key_value) + '\n'
+            match self.__paths.get_previous_path_validate_result():
+                case True:
+                    self.__translated_list[line_number] = self.__compare_with_previous(key_value=key_value) + "\n"
+                case False:
+                    self.__translated_list[line_number] = self.__compare_with_vanilla(key_value=key_value) + "\n"
+
+    def __compare_with_previous(self, key_value) -> str:
+        target_previous_value = self.__previous_version_dictionary.get(key_value['key'], None)
+        if target_previous_value == key_value['key']:
+            return target_previous_value
+        self.__compare_with_vanilla(key_value=key_value)
 
     def __compare_with_vanilla(self, key_value: dict) -> str:
         original_vanilla_value = self.__original_vanilla_dictionary.get(key_value["key"], None)
@@ -267,8 +280,8 @@ class Performer:
         if value:
             return value[0]
 
-    def __start_without_previous(self):
-        r"""Здесь происходит процесс обработки файлов, при условии отсутствия предыдущей версии перевода"""
+    def __process_data(self):
+        r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         for file in self.__paths.get_original_localization_hierarchy():
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / file.replace(self.__original_language,
@@ -281,18 +294,12 @@ class Performer:
                     self.__create_translated_list(line_number=line_number, key_value=key_value)
                 print(*self.__translated_list, file=target_file, sep='', end='')
 
-    def __start_with_previous(self):
-        pass
-
     def run(self):
         self.__create_directory_hierarchy()
         self.__create_game_localization_dictionary()
-        match self.__paths.get_previous_path_validate_result():
-            case True:
-                self.__create_previous_version_dictionary()
-                self.__start_with_previous()
-            case False:
-                self.__start_without_previous()
+        if self.__paths.get_previous_path_validate_result():
+            self.__create_previous_version_dictionary()
+        self.__process_data()
 
 
 def get_previous_new_path(original_language: str, target_language: str) -> [str, str, bool]:
