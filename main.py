@@ -124,6 +124,7 @@ class Performer:
         self.__paths = paths
         self.__original_language = original_language
         self.__target_language = target_language
+        self.__translator = GoogleTranslator(source=original_language, target=target_language)
 
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
@@ -131,6 +132,7 @@ class Performer:
         self.__target_vanilla_dictionary = {}
         self.__previous_version_dictionary = {}
         self.__modified_values = {}
+        self.__translated_list = []
 
     def __create_directory_hierarchy(self):
         if not self.__paths.get_target_path().exists():
@@ -158,29 +160,31 @@ class Performer:
         Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
         К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
                         'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
-        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value"""
+        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
+        А также в value уже обрезаны пробелы и  символы переноса строки справа"""
         self.__original_language_dictionary = {}
         num_str = 0
         for line in self.__current_original_lines:
             key = self.__get_localization_key(line=line)
             if key is None:
                 key = "not_program_data"
-            self.__original_language_dictionary[num_str] = {"key": key, "value": line}
+            self.__original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
             num_str += 1
+        self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
 
     def __create_game_localization_dictionary(self):
         original_vanilla_path = self.__paths.get_game_path() / self.__original_language
         target_vanilla_path = self.__paths.get_game_path() / self.__target_language
-        with original_vanilla_path.open(mode='r', encoding='utf-8-sig') as original_language_vanilla_file,\
+        with original_vanilla_path.open(mode='r', encoding='utf-8-sig') as original_language_vanilla_file, \
                 target_vanilla_path.open(mode='r', encoding='utf-8-sig') as target_language_vanilla_file:
             for line in original_language_vanilla_file.readlines():
                 localization_key = self.__get_localization_key(line=line)
                 if localization_key is not None:
-                    self.__original_vanilla_dictionary[localization_key] = line
+                    self.__original_vanilla_dictionary[localization_key] = line.rstrip()
             for line in target_language_vanilla_file.readlines():
                 localization_key = self.__get_localization_key(line=line)
                 if localization_key is not None:
-                    self.__target_vanilla_dictionary[localization_key] = line
+                    self.__target_vanilla_dictionary[localization_key] = line.rstrip()
 
     def __create_previous_version_dictionary(self):
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
@@ -192,25 +196,40 @@ class Performer:
                     if localization_key is not None:
                         self.__previous_version_dictionary[localization_key] = line
 
+    def __create_translated_list(self, line_number: int, key_value: dict):
+        if line_number == 0:
+            self.__translated_list[0] = "l_" + self.__target_language + ":\n"
+        else:
+            self.__translated_list[line_number] = self.__compare_with_vanilla(key_value=key_value) + '\n'
+
+    def __compare_with_vanilla(self, key_value: dict) -> str:
+        original_vanilla_value = self.__original_vanilla_dictionary.get(key_value["key"], None)
+        target_vanilla_value = self.__target_vanilla_dictionary.get(key_value["key"], None)
+        if original_vanilla_value is not None and target_vanilla_value is not None:
+            if original_vanilla_value == key_value["value"]:
+                return target_vanilla_value
+        if key_value["value"] == "":
+            return key_value["value"]
+        else:
+            return self.__translate_line(translator=self.__translator, line=key_value["value"])
+
     def __translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
         if translator is None:
-            return line + " #NT!\n"
+            return line + " #NT!"
         else:
             localization_value = self.__get_localization_value(line=line)
             if localization_value is None:
-                return line + "\n"
+                return line
             else:
                 try:
                     modified_line = self.__modify_line(line=localization_value, flag="modify")
-                    if modified_line is None:
-                        return line + "#NT!\n"
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
-                    return line + f" <\"{normal_string}\">" + " #NT!\n"
+                    return line + f" <\"{normal_string}\">" + " #NT!"
                 except Exception as e:
                     print("Произошла ошибка с переводом строки:\n", line, "\n", e)
-                    return line + " #Translation Error!" + "\n"
+                    return line + " #Translation Error!"
 
     def __modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
         r"""При флаге "modify" позволяет заменить некоторые части строки по шаблону на скрытую, ничего не обозначающую
@@ -225,9 +244,7 @@ class Performer:
                         self.__modified_values[f"[{shadow_number}]"] = step
                         line = line.replace(step, f"[{shadow_number}]")
                         shadow_number += 1
-                    return line
-                else:
-                    return None
+                return line
             case "return_normal_view":
                 for key, value in self.__modified_values.items():
                     line = line.replace(key, value)
@@ -259,7 +276,6 @@ class Performer:
     def run(self):
         self.__create_directory_hierarchy()
         self.__create_game_localization_dictionary()
-        self.__create_original_language_dictionary()
         match self.__paths.get_previous_path_validate_result():
             case True:
                 self.__create_previous_version_dictionary()
@@ -441,7 +457,8 @@ def main():
             path_to_original=game_path_original_language_full, path_to_target=game_path_target_language_full)
         full_original_path = os.path.join(original_language_path, step)
         full_new_path = os.path.join(new_translate_path, step.replace(original_language, target_language))
-        if previous_translate_path is not None and os.path.isfile(os.path.join(previous_translate_path, step.replace(original_language, target_language))):
+        if previous_translate_path is not None and os.path.isfile(
+                os.path.join(previous_translate_path, step.replace(original_language, target_language))):
             full_previous_path = os.path.join(previous_translate_path, step.replace(original_language, target_language))
             with open(file=full_previous_path, mode="r",
                       encoding="utf-8-sig") as previous_translate_file, \
@@ -514,7 +531,6 @@ def main():
                                                                          line=values["value"])
                 print(*new_translate_list, sep="", end="", file=new_translate_file)
     print("Завершено за: ", time.strftime("%H:%M:%S", (time.gmtime(time.time() - start_time))))
-
 
 # if __name__ == "__main__":
 #     main()
