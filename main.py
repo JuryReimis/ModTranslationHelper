@@ -268,7 +268,18 @@ class Performer:
             return value[0]
 
     def __start_without_previous(self):
-        pass
+        r"""Здесь происходит процесс обработки файлов, при условии отсутствия предыдущей версии перевода"""
+        for file in self.__paths.get_original_localization_hierarchy():
+            original_file_full_path = self.__paths.get_original_mode_path() / file
+            changed_file_full_path = self.__paths.get_target_path() / file.replace(self.__original_language,
+                                                                                   self.__target_language)
+            with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
+                    changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
+                self.__current_original_lines = original_file.readlines()
+                self.__create_original_language_dictionary()
+                for line_number, key_value in self.__original_language_dictionary.items():
+                    self.__create_translated_list(line_number=line_number, key_value=key_value)
+                print(*self.__translated_list, file=target_file, sep='', end='')
 
     def __start_with_previous(self):
         pass
