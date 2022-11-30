@@ -121,13 +121,15 @@ class Validator:
 
 class Performer(QObject):
 
-    def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None):
+    def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
+                 need_translate: bool = False):
         super(Performer, self).__init__()
         self.__signal = pyqtSignal()
         self.__paths = paths
         self.__original_language = original_language
         self.__target_language = target_language
-        self.__translator = GoogleTranslator(source=original_language, target=target_language)
+        self.__translator = GoogleTranslator(source=original_language, target=target_language) \
+            if need_translate is True else None
 
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
@@ -178,16 +180,20 @@ class Performer(QObject):
     def __create_game_localization_dictionary(self):
         original_vanilla_path = self.__paths.get_game_path() / self.__original_language
         target_vanilla_path = self.__paths.get_game_path() / self.__target_language
-        with original_vanilla_path.open(mode='r', encoding='utf-8-sig') as original_language_vanilla_file, \
-                target_vanilla_path.open(mode='r', encoding='utf-8-sig') as target_language_vanilla_file:
-            for line in original_language_vanilla_file.readlines():
-                localization_key = self.__get_localization_key(line=line)
-                if localization_key is not None:
-                    self.__original_vanilla_dictionary[localization_key] = line.rstrip()
-            for line in target_language_vanilla_file.readlines():
-                localization_key = self.__get_localization_key(line=line)
-                if localization_key is not None:
-                    self.__target_vanilla_dictionary[localization_key] = line.rstrip()
+        for file in original_vanilla_path.rglob('*'):
+            self.__original_vanilla_dictionary | self.__process_file(file=file)
+        for file in target_vanilla_path.rglob('*'):
+            self.__target_vanilla_dictionary | self.__process_file(file=file)
+
+    def __process_file(self, file: Path):
+        localization_dict = {}
+        if file.is_file():
+            with file.open(mode='r', encoding='utf-8-sig') as file:
+                for line in file.readlines():
+                    localization_key = self.__get_localization_key(line=line)
+                    if localization_key is not None:
+                        localization_dict[localization_key] = line.rstrip()
+        return localization_dict
 
     def __create_previous_version_dictionary(self):
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
@@ -284,8 +290,8 @@ class Performer(QObject):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         for file in self.__paths.get_original_localization_hierarchy():
             original_file_full_path = self.__paths.get_original_mode_path() / file
-            changed_file_full_path = self.__paths.get_target_path() / file.replace(self.__original_language,
-                                                                                   self.__target_language)
+            changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
+                                                                                        self.__target_language)
             with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
                     changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
                 self.__current_original_lines = original_file.readlines()
