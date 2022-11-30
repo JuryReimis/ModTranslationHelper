@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from custom_dialog_test1 import Ui_Dialog
-from main import Prepper
+from main import Prepper, Performer
 from test1 import Ui_MainWindow
 from deep_translator import GoogleTranslator
 
@@ -16,6 +16,7 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         MyWindow.setFixedSize(self, self.size())
+        self.running_thread = QtCore.QThread()
 
         self.last_selected_directory = '/'
         self.ui.run_pushButton.setText('Start')
@@ -64,9 +65,15 @@ class MyWindow(QtWidgets.QMainWindow):
                                                                  directory=self.last_selected_directory)
         self.ui.previous_directory_lineEdit.setText(chosen_path)
         self.last_selected_directory = chosen_path
+        self.previous_directory_changed()
 
     def previous_directory_changed(self):
-        pass
+        self.prepper.set_previous_path(previous_path=self.ui.previous_directory_lineEdit.text())
+        if not self.prepper.get_previous_path_validate_result():
+            self.ui.previous_directory_lineEdit.setText('')
+            error = CustomDialog(parent=self.ui.centralwidget, text='Указанная директория с предыдущей версией '
+                                                                    'перевода не найдена')
+            error.show()
 
     def select_target_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -115,7 +122,18 @@ class MyWindow(QtWidgets.QMainWindow):
             self.ui.need_translate_scrollArea.setEnabled(False)
 
     def run(self):
-        pass
+        performer = Performer(
+            paths=self.prepper,
+            original_language=self.ui.selector_original_language_comboBox.currentText(),
+            target_language=self.ui.selector_target_language_comboBox.currentText()
+        )
+        performer.moveToThread(self.running_thread)
+
+        # Место для коннектов межпоточных сигналов и слотов
+
+        self.running_thread.started.connect(performer.run)
+
+        self.running_thread.start()
 
     def get_all_checkbox(self):
         for checkbox in self.ui.need_translate_scrollArea.widget().children():
