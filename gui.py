@@ -39,15 +39,18 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.target_directory_lineEdit.editingFinished.connect(self.target_directory_changed)
 
         self.prepper = Prepper()
+        self.performer: Performer | None = None
 
     def select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.last_selected_directory)
         self.ui.game_directory_lineEdit.setText(chosen_path)
         self.last_selected_directory = chosen_path
+        self.game_directory_changed()
 
     def game_directory_changed(self):
         self.prepper.set_game_path(self.ui.game_directory_lineEdit.text())
+        self.check_readiness()
 
     def select_original_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -59,6 +62,7 @@ class MyWindow(QtWidgets.QMainWindow):
     def original_directory_changed(self):
         self.prepper.set_original_mode_path(self.ui.original_directory_lineEdit.text())
         self.form_checkbox_cascade(self.prepper.get_original_mode_path_validate_result())
+        self.check_readiness()
 
     def select_previous_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -82,13 +86,21 @@ class MyWindow(QtWidgets.QMainWindow):
         self.last_selected_directory = chosen_path
         self.target_directory_changed()
 
-    def target_directory_changed(self, ):
+    def target_directory_changed(self):
         self.prepper.set_target_path(self.ui.target_directory_lineEdit.text())
         if not self.prepper.get_target_path_validate_result():
             error = CustomDialog(parent=self.ui.centralwidget,
-                                 text='Невозможно получить доступ к диск. Проверьте путь к папке, в которую '
+                                 text='Невозможно получить доступ к диску. Проверьте путь к папке, в которую '
                                       'собираетесь записать перевод')
             error.show()
+        self.check_readiness()
+
+    def check_readiness(self):
+        if self.prepper.get_original_mode_path_validate_result() and self.prepper.get_game_path_validate_result()\
+               and self.prepper.get_target_path_validate_result():
+            self.ui.run_pushButton.setEnabled(True)
+        else:
+            self.ui.run_pushButton.setEnabled(False)
 
     def form_checkbox_cascade(self, validate_result: bool):
         match validate_result:
@@ -122,16 +134,17 @@ class MyWindow(QtWidgets.QMainWindow):
             self.ui.need_translate_scrollArea.setEnabled(False)
 
     def run(self):
-        performer = Performer(
+        self.performer = Performer(
             paths=self.prepper,
             original_language=self.ui.selector_original_language_comboBox.currentText(),
-            target_language=self.ui.selector_target_language_comboBox.currentText()
+            target_language=self.ui.selector_target_language_comboBox.currentText(),
+            need_translate=self.ui.need_translation_checkBox.isChecked()
         )
-        performer.moveToThread(self.running_thread)
+        self.performer.moveToThread(self.running_thread)
 
         # Место для коннектов межпоточных сигналов и слотов
 
-        self.running_thread.started.connect(performer.run)
+        self.running_thread.started.connect(self.performer.run)
 
         self.running_thread.start()
 
