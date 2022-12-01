@@ -54,6 +54,11 @@ class MyWindow(QtWidgets.QMainWindow):
 
     def game_directory_changed(self):
         self.prepper.set_game_path(self.ui.game_directory_lineEdit.text())
+        if not self.prepper.get_game_path_validate_result():
+            self.ui.game_directory_lineEdit.setText('')
+            if not str(self.prepper.get_game_path()) == '.':
+                error = CustomDialog(parent=self.ui.centralwidget, text='Указанная директория с игрой не найдена')
+                error.show()
         self.check_readiness()
 
     def select_original_directory(self):
@@ -66,6 +71,12 @@ class MyWindow(QtWidgets.QMainWindow):
     def original_directory_changed(self):
         self.prepper.set_original_mode_path(self.ui.original_directory_lineEdit.text())
         self.form_checkbox_cascade(self.prepper.get_original_mode_path_validate_result())
+        if not self.prepper.get_original_mode_path_validate_result():
+            self.ui.original_directory_lineEdit.setText('')
+            if not str(self.prepper.get_original_mode_path()) == '.':
+                error = CustomDialog(parent=self.ui.centralwidget, text='Указанная директория c локализацией '
+                                                                        'мода не найдена')
+                error.show()
         self.check_readiness()
 
     def select_previous_directory(self):
@@ -79,9 +90,10 @@ class MyWindow(QtWidgets.QMainWindow):
         self.prepper.set_previous_path(previous_path=self.ui.previous_directory_lineEdit.text())
         if not self.prepper.get_previous_path_validate_result():
             self.ui.previous_directory_lineEdit.setText('')
-            error = CustomDialog(parent=self.ui.centralwidget, text='Указанная директория с предыдущей версией '
-                                                                    'перевода не найдена')
-            error.show()
+            if not str(self.prepper.get_previous_path()) == '.':
+                error = CustomDialog(parent=self.ui.centralwidget, text='Указанная директория с предыдущей версией '
+                                                                        'перевода не найдена')
+                error.show()
 
     def select_target_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
