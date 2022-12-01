@@ -132,8 +132,9 @@ class Validator:
 
 
 class Performer(QObject):
-    finish_thread = pyqtSignal()
+    info_label_value = pyqtSignal(str)
     progress_bar_value = pyqtSignal(float)
+    finish_thread = pyqtSignal()
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
                  need_translate: bool = False):
@@ -162,7 +163,8 @@ class Performer(QObject):
                 parent = parent.parent
                 if parent.exists():
                     (parent / name).mkdir()
-                    print(f'Создана папка {name}')
+                    info = f"Создана папка {name}"
+                    self.info_label_value.emit(info)
                     parent = self.__paths.get_target_path()
                 if self.__paths.get_target_path().exists():
                     flag_is_exist = True
@@ -171,7 +173,8 @@ class Performer(QObject):
             directory: Path
             if not (self.__paths.get_target_path() / directory).exists():
                 (self.__paths.get_target_path() / directory).mkdir()
-                print(f'Создана папка {directory}')
+                info = f"Создана папка {directory}"
+                self.info_label_value.emit(info)
 
     def __create_original_language_dictionary(self):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
@@ -308,9 +311,12 @@ class Performer(QObject):
             with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
                     changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
                 self.__current_original_lines = original_file.readlines()
+                amount_lines = len(self.__current_original_lines)
                 self.__create_original_language_dictionary()
                 for line_number, key_value in self.__original_language_dictionary.items():
                     self.__create_translated_list(line_number=line_number, key_value=key_value)
+                    info = f"Обработка {line_number + 1}/{amount_lines}\nфайла {str(original_file_full_path.name)}"
+                    self.info_label_value.emit(info)
                     self.progress_bar_value.emit(original_file_full_path.stat().st_size /
                                                  len(self.__current_original_lines) /
                                                  self.__paths.get_original_files_size())
