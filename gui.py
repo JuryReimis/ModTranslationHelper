@@ -149,6 +149,10 @@ class MyWindow(QtWidgets.QMainWindow):
         else:
             self.ui.need_translate_scrollArea.setEnabled(False)
 
+    @pyqtSlot(str)
+    def set_info_label_new_value(self, info: str):
+        self.ui.info_label.setText(info)
+
     @pyqtSlot(float)
     def set_progressbar_new_value(self, progress: float):
         value = self.ui.progressBar.value() + progress * self.ui.progressBar.maximum()
@@ -176,6 +180,7 @@ class MyWindow(QtWidgets.QMainWindow):
 
         self.performer.moveToThread(self.running_thread)
 
+        self.performer.info_label_value.connect(self.set_info_label_new_value)
         self.performer.progress_bar_value.connect(self.set_progressbar_new_value)
         self.performer.finish_thread.connect(self.stop_thread)
 
