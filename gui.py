@@ -1,7 +1,11 @@
+import math
+
 from PyQt5 import QtWidgets, QtGui, QtCore
 
 import sys
 from pathlib import Path
+
+from PyQt5.QtCore import pyqtSlot
 
 from custom_dialog_test1 import Ui_Dialog
 from main import Prepper, Performer
@@ -16,7 +20,7 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         MyWindow.setFixedSize(self, self.size())
-        self.running_thread = QtCore.QThread()
+        self.running_thread = None
 
         self.last_selected_directory = '/'
         self.ui.run_pushButton.setText('Start')
@@ -105,7 +109,7 @@ class MyWindow(QtWidgets.QMainWindow):
     def form_checkbox_cascade(self, validate_result: bool):
         match validate_result:
             case True:
-                files = self.prepper.get_original_localization_hierarchy()
+                files = self.prepper.get_file_hierarchy()
                 vertical_layout_widget = QtWidgets.QWidget()
                 vertical_layout = QtWidgets.QVBoxLayout(vertical_layout_widget)
                 for file_name in files:
@@ -133,6 +137,19 @@ class MyWindow(QtWidgets.QMainWindow):
         else:
             self.ui.need_translate_scrollArea.setEnabled(False)
 
+    @pyqtSlot(float)
+    def set_progressbar_new_value(self, progress: float):
+        value = self.ui.progressBar.value() + progress * self.ui.progressBar.maximum()
+        if value > self.ui.progressBar.maximum():
+            self.ui.progressBar.setValue(self.ui.progressBar.maximum())
+        else:
+            self.ui.progressBar.setValue(math.ceil(value))
+
+    @pyqtSlot()
+    def stop_thread(self):
+        self.ui.run_pushButton.setEnabled(True)
+        self.running_thread.exec_()
+
     def run(self):
         self.performer = Performer(
             paths=self.prepper,
@@ -140,9 +157,15 @@ class MyWindow(QtWidgets.QMainWindow):
             target_language=self.ui.selector_target_language_comboBox.currentText(),
             need_translate=self.ui.need_translation_checkBox.isChecked()
         )
+
+        self.ui.run_pushButton.setEnabled(False)
+
+        self.running_thread = QtCore.QThread()
+
         self.performer.moveToThread(self.running_thread)
 
-        # Место для коннектов межпоточных сигналов и слотов
+        self.performer.progress_bar_value.connect(self.set_progressbar_new_value)
+        self.performer.finish_thread.connect(self.stop_thread)
 
         self.running_thread.started.connect(self.performer.run)
 
