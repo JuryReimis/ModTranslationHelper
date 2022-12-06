@@ -36,6 +36,8 @@ class MyWindow(QtWidgets.QMainWindow):
         self.ui.previous_directory_pushButton.clicked.connect(self.select_previous_directory)
         self.ui.target_directory_pushButton.clicked.connect(self.select_target_directory)
         self.ui.need_translation_checkBox.stateChanged.connect(self.need_translate_changed)
+        self.ui.check_all_pushButton.clicked.connect(self.check_all_checkboxes)
+        self.ui.uncheck_all_pushButton.clicked.connect(self.unchecked_all_checkboxes)
         self.ui.run_pushButton.clicked.connect(self.run)
         self.ui.game_directory_lineEdit.editingFinished.connect(self.game_directory_changed)
         self.ui.original_directory_lineEdit.editingFinished.connect(self.original_directory_changed)
@@ -111,6 +113,12 @@ class MyWindow(QtWidgets.QMainWindow):
             error.show()
         self.check_readiness()
 
+    def need_translate_changed(self):
+        if self.ui.need_translation_checkBox.isChecked():
+            self.ui.need_translate_scrollArea.setEnabled(True)
+        else:
+            self.ui.need_translate_scrollArea.setEnabled(False)
+
     def check_readiness(self):
         if self.prepper.get_original_mode_path_validate_result() and self.prepper.get_game_path_validate_result()\
                and self.prepper.get_target_path_validate_result():
@@ -143,11 +151,26 @@ class MyWindow(QtWidgets.QMainWindow):
                                      text='Указанная директория с модом - не существует')
                 error.show()
 
-    def need_translate_changed(self):
-        if self.ui.need_translation_checkBox.isChecked():
-            self.ui.need_translate_scrollArea.setEnabled(True)
-        else:
-            self.ui.need_translate_scrollArea.setEnabled(False)
+    def check_all_checkboxes(self):
+        for checkbox in self.ui.need_translate_scrollArea.widget().children():
+            if isinstance(checkbox, QtWidgets.QCheckBox):
+                checkbox.setChecked(True)
+
+    def unchecked_all_checkboxes(self):
+        for checkbox in self.ui.need_translate_scrollArea.widget().children():
+            if isinstance(checkbox, QtWidgets.QCheckBox):
+                checkbox.setChecked(False)
+
+    def get_all_checkboxes(self) -> list:
+        enabled = []
+        for checkbox in self.ui.need_translate_scrollArea.widget().children():
+            if isinstance(checkbox, QtWidgets.QCheckBox) and checkbox.isChecked():
+                enabled.append(Path(checkbox.objectName()))
+        return enabled
+
+    @pyqtSlot(str)
+    def add_text_in_console(self, text: str):
+        self.ui.console_textBrowser.append(text)
 
     @pyqtSlot(str)
     def set_info_label_new_value(self, info: str):
@@ -171,7 +194,8 @@ class MyWindow(QtWidgets.QMainWindow):
             paths=self.prepper,
             original_language=self.ui.selector_original_language_comboBox.currentText(),
             target_language=self.ui.selector_target_language_comboBox.currentText(),
-            need_translate=self.ui.need_translation_checkBox.isChecked()
+            need_translate=self.ui.need_translation_checkBox.isChecked(),
+            need_translate_list=self.get_all_checkboxes()
         )
 
         self.ui.run_pushButton.setEnabled(False)
@@ -180,6 +204,8 @@ class MyWindow(QtWidgets.QMainWindow):
 
         self.performer.moveToThread(self.running_thread)
 
+        # Коннекты сигналов и слотов для межпоточной передачи информации
+        self.performer.info_console_value.connect(self.add_text_in_console)
         self.performer.info_label_value.connect(self.set_info_label_new_value)
         self.performer.progress_bar_value.connect(self.set_progressbar_new_value)
         self.performer.finish_thread.connect(self.stop_thread)
@@ -187,10 +213,6 @@ class MyWindow(QtWidgets.QMainWindow):
         self.running_thread.started.connect(self.performer.run)
 
         self.running_thread.start()
-
-    def get_all_checkbox(self):
-        for checkbox in self.ui.need_translate_scrollArea.widget().children():
-            print(checkbox.objectName())
 
 
 class CustomDialog(QtWidgets.QDialog):
