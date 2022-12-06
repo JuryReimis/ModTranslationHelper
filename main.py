@@ -210,7 +210,7 @@ class Performer(QObject):
         self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
 
     def __create_game_localization_dictionary(self):
-        self.info_console_value.emit(f'Начало создания словаря игровой локализации'
+        self.info_console_value.emit(f'Начато создание словаря игровой локализации'
                                      f' - {self.__calculate_time_delta()}\n')
         self.info_label_value.emit('Обработка игровой локализации')
         original_vanilla_path = self.__paths.get_game_path() / self.__original_language
@@ -231,7 +231,7 @@ class Performer(QObject):
         return localization_dict
 
     def __create_previous_version_dictionary(self):
-        self.info_console_value.emit(f'Начало создания словаря предыдущей локализации -'
+        self.info_console_value.emit(f'Начато создание словаря предыдущей локализации -'
                                      f' {self.__calculate_time_delta()}\n')
         self.info_label_value.emit('Обработка предыдущей локализации')
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
