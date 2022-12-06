@@ -132,18 +132,19 @@ class Validator:
 
 
 class Performer(QObject):
+    info_console_value = pyqtSignal(str)
     info_label_value = pyqtSignal(str)
     progress_bar_value = pyqtSignal(float)
     finish_thread = pyqtSignal()
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
-                 need_translate: bool = False):
+                 need_translate: bool = False, need_translate_list: list | None = None):
         super(Performer, self).__init__()
         self.__paths = paths
         self.__original_language = original_language
         self.__target_language = target_language
-        self.__translator = GoogleTranslator(source=original_language, target=target_language) \
-            if need_translate is True else None
+        self.__translator = None
+        self.__need_translate_list = need_translate_list if need_translate is True else []
 
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
@@ -163,8 +164,8 @@ class Performer(QObject):
                 parent = parent.parent
                 if parent.exists():
                     (parent / name).mkdir()
-                    info = f"Создана папка {name}"
-                    self.info_label_value.emit(info)
+                    info = f"Создана папка {name}\n"
+                    self.info_console_value.emit(info)
                     parent = self.__paths.get_target_path()
                 if self.__paths.get_target_path().exists():
                     flag_is_exist = True
@@ -173,8 +174,8 @@ class Performer(QObject):
             directory: Path
             if not (self.__paths.get_target_path() / directory).exists():
                 (self.__paths.get_target_path() / directory).mkdir()
-                info = f"Создана папка {directory}"
-                self.info_label_value.emit(info)
+                info = f"Создана папка {directory}\n"
+                self.info_console_value.emit(info)
 
     def __create_original_language_dictionary(self):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
@@ -308,6 +309,10 @@ class Performer(QObject):
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
                                                                                         self.__target_language)
+            if file in self.__need_translate_list:
+                self.__translator = GoogleTranslator(source=self.__original_language, target=self.__target_language)
+            else:
+                self.__translator = None
             with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
                     changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
                 self.__current_original_lines = original_file.readlines()
@@ -315,7 +320,7 @@ class Performer(QObject):
                 self.__create_original_language_dictionary()
                 for line_number, key_value in self.__original_language_dictionary.items():
                     self.__create_translated_list(line_number=line_number, key_value=key_value)
-                    info = f"Обработка {line_number + 1}/{amount_lines}\nфайла {str(original_file_full_path.name)}"
+                    info = f"Обработка строки {line_number + 1}/{amount_lines}\nфайла {str(original_file_full_path.name)}"
                     self.info_label_value.emit(info)
                     self.progress_bar_value.emit(original_file_full_path.stat().st_size /
                                                  len(self.__current_original_lines) /
