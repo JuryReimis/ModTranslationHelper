@@ -1,6 +1,5 @@
 from pathlib import Path
 import re
-import sys
 import time
 from PyQt5.QtCore import QObject, pyqtSignal
 from deep_translator import GoogleTranslator
@@ -146,6 +145,7 @@ class Performer(QObject):
         self.__translator = None
         self.__need_translate_list = need_translate_list if need_translate is True else []
 
+        self.__start_running_time = None
         self.__original_language_dictionary = {}
         self.__current_original_lines = []
         self.__original_vanilla_dictionary = {}
@@ -154,7 +154,15 @@ class Performer(QObject):
         self.__modified_values = {}
         self.__translated_list = []
 
+    def __calculate_time_delta(self) -> str:
+        start_time = self.__start_running_time
+        current_time = time.time()
+        delta = current_time - start_time
+        return time.strftime('%H:%M:%S', time.gmtime(delta))
+
     def __create_directory_hierarchy(self):
+        self.info_console_value.emit(f'Начато формирование иерархии директорий - {self.__calculate_time_delta()}\n')
+        self.info_label_value.emit('Формирую иерархию\nдиректорий')
         if not self.__paths.get_target_path().exists():
             flag_is_exist = False
             parent = self.__paths.get_target_path()
@@ -164,7 +172,7 @@ class Performer(QObject):
                 parent = parent.parent
                 if parent.exists():
                     (parent / name).mkdir()
-                    info = f"Создана папка {name}\n"
+                    info = f"Создана папка {name} - {self.__calculate_time_delta()}\n"
                     self.info_console_value.emit(info)
                     parent = self.__paths.get_target_path()
                 if self.__paths.get_target_path().exists():
@@ -172,10 +180,17 @@ class Performer(QObject):
                 item += 1
         for directory in self.__paths.get_file_hierarchy_only_dirs():
             directory: Path
-            if not (self.__paths.get_target_path() / directory).exists():
-                (self.__paths.get_target_path() / directory).mkdir()
-                info = f"Создана папка {directory}\n"
-                self.info_console_value.emit(info)
+            try:
+                if not (self.__paths.get_target_path() / directory).exists():
+                    (self.__paths.get_target_path() / directory).mkdir()
+                    info = f"Создана папка {directory} - {self.__calculate_time_delta()}\n"
+                    self.info_console_value.emit(info)
+            except Exception as error:
+                error_text = f"Произошла ошибка при попытке создания директории {directory}:" \
+                             f"{error}"
+                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
+                self.info_label_value.emit(self.__change_text_style('Поток обработки остановлен', 'red'))
+                self.finish_thread.emit()
 
     def __create_original_language_dictionary(self):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
@@ -195,6 +210,9 @@ class Performer(QObject):
         self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
 
     def __create_game_localization_dictionary(self):
+        self.info_console_value.emit(f'Начало создания словаря игровой локализации'
+                                     f' - {self.__calculate_time_delta()}\n')
+        self.info_label_value.emit('Обработка игровой локализации')
         original_vanilla_path = self.__paths.get_game_path() / self.__original_language
         target_vanilla_path = self.__paths.get_game_path() / self.__target_language
         for file in original_vanilla_path.rglob('*'):
@@ -204,7 +222,7 @@ class Performer(QObject):
 
     def __process_file(self, file: Path):
         localization_dict = {}
-        if file.is_file():
+        if file.is_file() and file.suffix in ['.yml', '.txt', ]:
             with file.open(mode='r', encoding='utf-8-sig') as file:
                 for line in file.readlines():
                     localization_key = self.__get_localization_key(line=line)
@@ -213,6 +231,9 @@ class Performer(QObject):
         return localization_dict
 
     def __create_previous_version_dictionary(self):
+        self.info_console_value.emit(f'Начало создания словаря предыдущей локализации -'
+                                     f' {self.__calculate_time_delta()}\n')
+        self.info_label_value.emit('Обработка предыдущей локализации')
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
         for file in self.__paths.get_previous_files():
             file: Path
@@ -263,8 +284,9 @@ class Performer(QObject):
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
                     return line + f" <\"{normal_string}\">" + " #NT!"
-                except Exception as e:
-                    print("Произошла ошибка с переводом строки:\n", line, "\n", e)
+                except Exception as error:
+                    error_text = f"Произошла ошибка с переводом строки:\n{line}\n{error}"
+                    self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
                     return line + " #Translation Error!"
 
     def __modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
@@ -286,8 +308,14 @@ class Performer(QObject):
                     line = line.replace(key, value)
                 return line
             case _:
-                print("Ошибка при модификации, флаг нечитаем")
-                sys.exit()
+                self.info_console_value('Ошибка при модификации, флаг нечитаем')
+                self.finish_thread.emit()
+
+    @staticmethod
+    def __change_text_style(text: str, flag):
+        match flag:
+            case 'red':
+                return f'<span style=\" color: red;\">' + text + '</span>'
 
     @staticmethod
     def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
@@ -305,6 +333,7 @@ class Performer(QObject):
 
     def __process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
+        self.info_console_value.emit(f'Начата обработка файлов - {self.__calculate_time_delta()}\n')
         for file in self.__paths.get_file_hierarchy():
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
@@ -320,7 +349,8 @@ class Performer(QObject):
                 self.__create_original_language_dictionary()
                 for line_number, key_value in self.__original_language_dictionary.items():
                     self.__create_translated_list(line_number=line_number, key_value=key_value)
-                    info = f"Обработка строки {line_number + 1}/{amount_lines}\nфайла {str(original_file_full_path.name)}"
+                    info = f"Обработка строки {line_number + 1}/{amount_lines}\n" \
+                           f"файла {str(original_file_full_path.name)}"
                     self.info_label_value.emit(info)
                     self.progress_bar_value.emit(original_file_full_path.stat().st_size /
                                                  len(self.__current_original_lines) /
@@ -328,10 +358,12 @@ class Performer(QObject):
                 print(*self.__translated_list, file=target_file, sep='', end='')
 
     def run(self):
+        self.__start_running_time = time.time()
         self.__create_directory_hierarchy()
         self.__create_game_localization_dictionary()
         if self.__paths.get_previous_path_validate_result():
             self.__create_previous_version_dictionary()
         self.__process_data()
-        print(f'Обработка завершена за {None}')
+        self.info_console_value.emit(f'Программа закончила свою работу за {self.__calculate_time_delta()}')
+        self.info_label_value.emit('Обработка данных закончена')
         self.finish_thread.emit()
