@@ -13,17 +13,17 @@ from test1 import Ui_MainWindow
 from deep_translator import GoogleTranslator
 
 
-class MyWindow(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
-        super(MyWindow, self).__init__(parent=parent)
+        super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
-        MyWindow.setFixedSize(self, self.size())
+        MainWindow.setFixedSize(self, self.size())
+        self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
 
         self.__last_selected_directory = '/'
-        self.__ui.run_pushButton.setText('Start')
         self.__ui.run_pushButton.setEnabled(False)
         for language in GoogleTranslator.get_supported_languages():
             self.__ui.selector_original_language_comboBox.addItem(language)
@@ -75,10 +75,6 @@ class MyWindow(QtWidgets.QMainWindow):
         self.__form_checkbox_cascade(self.__prepper.get_original_mode_path_validate_result())
         if not self.__prepper.get_original_mode_path_validate_result():
             self.__ui.original_directory_lineEdit.setText('')
-            if not str(self.__prepper.get_original_mode_path()) == '.':
-                error = CustomDialog(parent=self.__ui.centralwidget, text='Указанная директория c локализацией '
-                                                                        'мода не найдена')
-                error.show()
         self.__check_readiness()
 
     def __select_previous_directory(self):
@@ -94,7 +90,7 @@ class MyWindow(QtWidgets.QMainWindow):
             self.__ui.previous_directory_lineEdit.setText('')
             if not str(self.__prepper.get_previous_path()) == '.':
                 error = CustomDialog(parent=self.__ui.centralwidget, text='Указанная директория с предыдущей версией '
-                                                                        'перевода не найдена')
+                                                                          'перевода не найдена')
                 error.show()
 
     def __select_target_directory(self):
@@ -120,8 +116,8 @@ class MyWindow(QtWidgets.QMainWindow):
             self.__ui.need_translate_scrollArea.setEnabled(False)
 
     def __check_readiness(self):
-        if self.__prepper.get_original_mode_path_validate_result() and self.__prepper.get_game_path_validate_result()\
-               and self.__prepper.get_target_path_validate_result():
+        if self.__prepper.get_original_mode_path_validate_result() and self.__prepper.get_game_path_validate_result() \
+                and self.__prepper.get_target_path_validate_result():
             self.__ui.run_pushButton.setEnabled(True)
         else:
             self.__ui.run_pushButton.setEnabled(False)
@@ -222,13 +218,14 @@ class CustomDialog(QtWidgets.QDialog):
         self.__ui = Ui_Dialog()
         self.__ui.setupUi(self)
         CustomDialog.setFixedSize(self, self.size())
+        self.setWindowIcon(QtGui.QIcon('icons/error icon.jpg'))
 
         self.__ui.no_path_error_textBrowser.setText(text)
 
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
-    application = MyWindow()
+    application = MainWindow()
     application.show()
 
     sys.exit(app.exec_())
