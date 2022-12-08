@@ -7,9 +7,9 @@ from pathlib import Path
 
 from PyQt5.QtCore import pyqtSlot
 
-from custom_dialog_test1 import Ui_Dialog
+from custom_dialog import Ui_Dialog
 from main import Prepper, Performer
-from test1 import Ui_MainWindow
+from MainWindow import Ui_MainWindow
 from deep_translator import GoogleTranslator
 
 
@@ -157,12 +157,13 @@ class MainWindow(QtWidgets.QMainWindow):
             if isinstance(checkbox, QtWidgets.QCheckBox):
                 checkbox.setChecked(False)
 
-    def __get_all_checkboxes(self) -> list:
+    def __get_all_checkboxes(self) -> tuple:
+        r"""Возвращает кортеж из путей(Path()), отмеченных в ScrollArea"""
         enabled = []
         for checkbox in self.__ui.need_translate_scrollArea.widget().children():
             if isinstance(checkbox, QtWidgets.QCheckBox) and checkbox.isChecked():
                 enabled.append(Path(checkbox.objectName()))
-        return enabled
+        return tuple(enabled)
 
     @pyqtSlot(str)
     def add_text_in_console(self, text: str):
@@ -186,12 +187,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.exec_()
 
     def __run(self):
+        self.__ui.progressBar.setValue(0)
         self.__performer = Performer(
             paths=self.__prepper,
             original_language=self.__ui.selector_original_language_comboBox.currentText(),
             target_language=self.__ui.selector_target_language_comboBox.currentText(),
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
-            need_translate_list=self.__get_all_checkboxes()
+            need_translate_tuple=self.__get_all_checkboxes()
         )
 
         self.__ui.run_pushButton.setEnabled(False)
