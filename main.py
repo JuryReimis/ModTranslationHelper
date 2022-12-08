@@ -137,16 +137,17 @@ class Performer(QObject):
     finish_thread = pyqtSignal()
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
-                 need_translate: bool = False, need_translate_list: list | None = None):
+                 need_translate: bool = False, need_translate_tuple: tuple | None = None):
         super(Performer, self).__init__()
         self.__paths = paths
         self.__original_language = original_language
         self.__target_language = target_language
-        self.__translator = None
-        self.__need_translate_list = need_translate_list if need_translate is True else []
+        self.__translator = GoogleTranslator(source=self.__original_language, target=self.__target_language)
+        self.__need_translate_list = need_translate_tuple if need_translate is True else tuple()
 
         self.__start_running_time = None
         self.__original_language_dictionary = {}
+        self.__current_process_file: str = ''
         self.__current_original_lines = []
         self.__original_vanilla_dictionary = {}
         self.__target_vanilla_dictionary = {}
@@ -161,7 +162,8 @@ class Performer(QObject):
         return time.strftime('%H:%M:%S', time.gmtime(delta))
 
     def __create_directory_hierarchy(self):
-        self.info_console_value.emit(f'Начато формирование иерархии директорий - {self.__calculate_time_delta()}\n')
+        info = f"Начато формирование иерархии директорий - {self.__calculate_time_delta()}\n"
+        self.info_console_value.emit(self.__change_text_style(info, 'green'))
         self.info_label_value.emit('Формирую иерархию\nдиректорий')
         if not self.__paths.get_target_path().exists():
             flag_is_exist = False
@@ -223,11 +225,15 @@ class Performer(QObject):
     def __process_file(self, file: Path):
         localization_dict = {}
         if file.is_file() and file.suffix in ['.yml', '.txt', ]:
-            with file.open(mode='r', encoding='utf-8-sig') as file:
-                for line in file.readlines():
-                    localization_key = self.__get_localization_key(line=line)
-                    if localization_key is not None:
-                        localization_dict[localization_key] = line.rstrip()
+            try:
+                with file.open(mode='r', encoding='utf-8-sig') as file:
+                    for line in file.readlines():
+                        localization_key = self.__get_localization_key(line=line)
+                        if localization_key is not None:
+                            localization_dict[localization_key] = line.rstrip()
+            except Exception as error:
+                error_text = f"Произошла ошибка при обработке файла {str(file)} - {error}"
+                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
         return localization_dict
 
     def __create_previous_version_dictionary(self):
@@ -237,11 +243,15 @@ class Performer(QObject):
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
         for file in self.__paths.get_previous_files():
             file: Path
-            with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
-                for line in file_with_previous_version.readlines():
-                    localization_key = self.__get_localization_key(line=line)
-                    if localization_key is not None:
-                        self.__previous_version_dictionary[localization_key] = line
+            try:
+                with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
+                    for line in file_with_previous_version.readlines():
+                        localization_key = self.__get_localization_key(line=line)
+                        if localization_key is not None:
+                            self.__previous_version_dictionary[localization_key] = line
+            except Exception as error:
+                error_text = f"Произошла ошибка при обработке файла {str(file)} - {error}"
+                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
 
     def __create_translated_list(self, line_number: int, key_value: dict):
         if line_number == 0:
@@ -254,10 +264,11 @@ class Performer(QObject):
                     self.__translated_list[line_number] = self.__compare_with_vanilla(key_value=key_value) + "\n"
 
     def __compare_with_previous(self, key_value) -> str:
-        target_previous_value = self.__previous_version_dictionary.get(key_value['key'], None)
-        if target_previous_value == key_value['key']:
-            return target_previous_value
-        self.__compare_with_vanilla(key_value=key_value)
+        previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
+        if previous_line is None:
+            return self.__compare_with_vanilla(key_value=key_value)
+        else:
+            return previous_line
 
     def __compare_with_vanilla(self, key_value: dict) -> str:
         original_vanilla_value = self.__original_vanilla_dictionary.get(key_value["key"], None)
@@ -272,7 +283,11 @@ class Performer(QObject):
 
     def __translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
-        if translator is None:
+        if self.__current_process_file in self.__need_translate_list:
+            translate_flag = True
+        else:
+            translate_flag = False
+        if translate_flag is False:
             return line + " #NT!"
         else:
             localization_value = self.__get_localization_value(line=line)
@@ -285,7 +300,7 @@ class Performer(QObject):
                     normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
                     return line + f" <\"{normal_string}\">" + " #NT!"
                 except Exception as error:
-                    error_text = f"Произошла ошибка с переводом строки:\n{line}\n{error}"
+                    error_text = f"Произошла ошибка с переводом строки:\n{line}\n{error}\n"
                     self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
                     return line + " #Translation Error!"
 
@@ -316,6 +331,10 @@ class Performer(QObject):
         match flag:
             case 'red':
                 return f'<span style=\" color: red;\">' + text + '</span>'
+            case 'green':
+                return f'<span style=\" color: green;\">' + text + '</span>'
+            case 'orange':
+                return f'<span style=\" color: orange;\">' + text + '</span>'
 
     @staticmethod
     def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
@@ -335,27 +354,30 @@ class Performer(QObject):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         self.info_console_value.emit(f'Начата обработка файлов - {self.__calculate_time_delta()}\n')
         for file in self.__paths.get_file_hierarchy():
+            self.__current_process_file = file
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
                                                                                         self.__target_language)
-            if file in self.__need_translate_list:
-                self.__translator = GoogleTranslator(source=self.__original_language, target=self.__target_language)
-            else:
-                self.__translator = None
-            with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
-                    changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
-                self.__current_original_lines = original_file.readlines()
-                amount_lines = len(self.__current_original_lines)
-                self.__create_original_language_dictionary()
-                for line_number, key_value in self.__original_language_dictionary.items():
-                    self.__create_translated_list(line_number=line_number, key_value=key_value)
-                    info = f"Обработка строки {line_number + 1}/{amount_lines}\n" \
-                           f"файла {str(original_file_full_path.name)}"
-                    self.info_label_value.emit(info)
-                    self.progress_bar_value.emit(original_file_full_path.stat().st_size /
-                                                 len(self.__current_original_lines) /
-                                                 self.__paths.get_original_files_size())
-                print(*self.__translated_list, file=target_file, sep='', end='')
+            try:
+                with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
+                        changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
+                    info = f"Начата работа с файлом {file} - {self.__calculate_time_delta()}\n"
+                    self.info_console_value.emit(info)
+                    self.__current_original_lines = original_file.readlines()
+                    amount_lines = len(self.__current_original_lines)
+                    self.__create_original_language_dictionary()
+                    for line_number, key_value in self.__original_language_dictionary.items():
+                        self.__create_translated_list(line_number=line_number, key_value=key_value)
+                        info = f"Обработка строки {line_number + 1}/{amount_lines}\n" \
+                               f"файла {str(original_file_full_path.name)}"
+                        self.info_label_value.emit(info)
+                        self.progress_bar_value.emit(original_file_full_path.stat().st_size /
+                                                     len(self.__current_original_lines) /
+                                                     self.__paths.get_original_files_size())
+                    print(*self.__translated_list, file=target_file, sep='', end='')
+            except Exception as error:
+                error_info = f"Произошла ошибка:\n -{error}\n"
+                self.info_console_value.emit(self.__change_text_style(error_info, 'red'))
 
     def run(self):
         self.__start_running_time = time.time()
@@ -364,6 +386,7 @@ class Performer(QObject):
         if self.__paths.get_previous_path_validate_result():
             self.__create_previous_version_dictionary()
         self.__process_data()
-        self.info_console_value.emit(f'Программа закончила свою работу за {self.__calculate_time_delta()}')
+        info = f"Программа закончила свою работу за {self.__calculate_time_delta()}"
+        self.info_console_value.emit(self.__change_text_style(info, 'orange'))
         self.info_label_value.emit('Обработка данных закончена')
         self.finish_thread.emit()
