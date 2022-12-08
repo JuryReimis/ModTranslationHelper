@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PyQt5.QtCore import pyqtSlot
 
-from custom_dialog import Ui_Dialog
+from CustomDialog import Ui_Dialog
 from main import Prepper, Performer
 from MainWindow import Ui_MainWindow
 from deep_translator import GoogleTranslator
@@ -39,6 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.check_all_pushButton.clicked.connect(self.__check_all_checkboxes)
         self.__ui.uncheck_all_pushButton.clicked.connect(self.__unchecked_all_checkboxes)
         self.__ui.run_pushButton.clicked.connect(self.__run)
+        self.__ui.donate_pushButton.clicked.connect(self.__donate_clicked)
         self.__ui.game_directory_lineEdit.editingFinished.connect(self.__game_directory_changed)
         self.__ui.original_directory_lineEdit.editingFinished.connect(self.__original_directory_changed)
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
@@ -164,6 +165,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if isinstance(checkbox, QtWidgets.QCheckBox) and checkbox.isChecked():
                 enabled.append(Path(checkbox.objectName()))
         return tuple(enabled)
+
+    def __donate_clicked(self):
+        thanks_window = CustomDialog(parent=self,
+                                     text='Спасибо, что так высоко оценили мой труд!\nДанная функция находится'
+                                          ' в разработке, так что пока принимаю лучи добра! :)')
+        thanks_window.show()
 
     @pyqtSlot(str)
     def add_text_in_console(self, text: str):
