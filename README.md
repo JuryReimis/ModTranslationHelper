@@ -1,4 +1,4 @@
-# ModTranslateHelper
+# ModTranslationHelper
 RU:
 Программа для помощи в переводах модов к играм Paradox Interactive
 
