@@ -44,6 +44,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.original_directory_lineEdit.editingFinished.connect(self.__original_directory_changed)
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
+        self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
 
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
@@ -72,7 +73,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__original_directory_changed()
 
     def __original_directory_changed(self):
-        self.__prepper.set_original_mode_path(self.__ui.original_directory_lineEdit.text())
+        self.__prepper.set_original_mode_path(
+            original_mode_path=self.__ui.original_directory_lineEdit.text(),
+            original_language=self.__ui.selector_original_language_comboBox.currentText()
+        )
         self.__form_checkbox_cascade(self.__prepper.get_original_mode_path_validate_result())
         if not self.__prepper.get_original_mode_path_validate_result():
             self.__ui.original_directory_lineEdit.setText('')
@@ -109,6 +113,10 @@ class MainWindow(QtWidgets.QMainWindow):
                                       'собираетесь записать перевод')
             error.show()
         self.__check_readiness()
+
+    def __original_language_changed(self):
+        if self.__ui.original_directory_lineEdit.text():
+            self.__original_directory_changed()
 
     def __need_translate_changed(self):
         if self.__ui.need_translation_checkBox.isChecked():

@@ -37,8 +37,8 @@ class Prepper:
     def get_game_path_validate_result(self) -> bool:
         return self._game_path_validate_result
 
-    def set_original_mode_path(self, original_mode_path):
-        self._original_mode_path = Path(original_mode_path)
+    def set_original_mode_path(self, original_mode_path: str, original_language: str):
+        self._original_mode_path = Path(original_mode_path) / original_language
         self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
         if self.get_original_mode_path_validate_result():
             self._create_localization_hierarchy()
