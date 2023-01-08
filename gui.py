@@ -12,6 +12,9 @@ from main import Prepper, Performer
 from MainWindow import Ui_MainWindow
 from deep_translator import GoogleTranslator
 
+BASE_DIR = Path.cwd()
+TRANSLATIONS_DIR = BASE_DIR / 'languages'
+
 
 class MainWindow(QtWidgets.QMainWindow):
 
@@ -19,6 +22,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
+        self.__init_languages()
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
@@ -45,9 +49,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
+        self.__ui.comboBox.currentTextChanged.connect(self.__change_language)
 
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
+
+    def __init_languages(self):
+        self.__translators = []
+        languages_list = ['Русский']
+        for directory in TRANSLATIONS_DIR.iterdir():
+            if directory.is_dir():
+                languages_list.append(directory.name)
+        self.__ui.comboBox.addItems(languages_list)
+        self.__ui.comboBox.setCurrentIndex(0)
+
+    def __change_language(self):
+        def set_translators():
+            for _translator in self.__translators:
+                app.installTranslator(_translator)
+
+        def del_translators():
+            for _translator in self.__translators:
+                app.removeTranslator(_translator)
+
+        del_translators()
+
+        self.__translators.clear()
+        if self.__ui.comboBox.currentText() != 'Русский':
+            current_language = self.__ui.comboBox.currentText()
+            translation_files = [TRANSLATIONS_DIR / current_language / file for file in
+                                 (TRANSLATIONS_DIR / current_language).iterdir() if
+                                 (TRANSLATIONS_DIR / current_language).exists() and file.is_file()]
+
+            for file in translation_files:
+                translator = QtCore.QTranslator()
+                translator.load(str(file))
+                self.__translators.append(translator)
+            set_translators()
+        self.__ui.retranslateUi(self)
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
