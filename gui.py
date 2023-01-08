@@ -8,6 +8,7 @@ from pathlib import Path
 from PyQt5.QtCore import pyqtSlot
 
 from CustomDialog import Ui_Dialog
+from languages.language_constants import LanguageConstants
 from main import Prepper, Performer
 from MainWindow import Ui_MainWindow
 from deep_translator import GoogleTranslator
@@ -58,10 +59,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__translators = []
         languages_list = ['Русский']
         for directory in TRANSLATIONS_DIR.iterdir():
-            if directory.is_dir():
+            if directory.is_dir() and directory.name != "__pycache__":
                 languages_list.append(directory.name)
         self.__ui.comboBox.addItems(languages_list)
         self.__ui.comboBox.setCurrentIndex(0)
+        self.__change_language()
 
     def __change_language(self):
         def set_translators():
@@ -87,6 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.__translators.append(translator)
             set_translators()
         self.__ui.retranslateUi(self)
+        LanguageConstants.retranslate()
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
