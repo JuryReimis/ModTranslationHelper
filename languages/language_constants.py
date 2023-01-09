@@ -22,6 +22,9 @@ class LanguageConstants:
     final = ''
     final_time = ''
 
+    error_folder_does_not_exist = ''
+    error_drive_not_exist = ''
+
     @classmethod
     def retranslate(cls):
         _translate = QtCore.QCoreApplication.translate
@@ -44,5 +47,8 @@ class LanguageConstants:
         cls.process_string = _translate("Constants", "Обработка строки")
         cls.final = _translate("Constants", "Обработка данных закончена")
         cls.final_time = _translate("Constants", "Программа закончила свою работу за")
+
+        cls.error_folder_does_not_exist = _translate("Constants", "Директория не существует")
+        cls.error_drive_not_exist = _translate("Constants", "Выбранный диск не существует")
 
 
