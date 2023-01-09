@@ -1,4 +1,5 @@
 import math
+import webbrowser
 
 from PyQt5 import QtWidgets, QtGui, QtCore
 
@@ -103,7 +104,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.__prepper.get_game_path_validate_result():
             self.__ui.game_directory_lineEdit.setText('')
             if not str(self.__prepper.get_game_path()) == '.':
-                error = CustomDialog(parent=self.__ui.centralwidget, text='Указанная директория с игрой не найдена')
+                error = CustomDialog(parent=self.__ui.centralwidget,
+                                     text=f'{self.__prepper.get_game_path()} '
+                                          f'- {LanguageConstants.error_folder_does_not_exist}')
                 error.show()
         self.__check_readiness()
 
@@ -136,8 +139,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.__prepper.get_previous_path_validate_result():
             self.__ui.previous_directory_lineEdit.setText('')
             if not str(self.__prepper.get_previous_path()) == '.':
-                error = CustomDialog(parent=self.__ui.centralwidget, text='Указанная директория с предыдущей версией '
-                                                                          'перевода не найдена')
+                error = CustomDialog(parent=self.__ui.centralwidget,
+                                     text=f'{self.__prepper.get_previous_path()} - '
+                                          f'{LanguageConstants.error_folder_does_not_exist}')
                 error.show()
 
     def __select_target_directory(self):
@@ -151,8 +155,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__prepper.set_target_path(self.__ui.target_directory_lineEdit.text())
         if not self.__prepper.get_target_path_validate_result():
             error = CustomDialog(parent=self.__ui.centralwidget,
-                                 text='Невозможно получить доступ к диску. Проверьте путь к папке, в которую '
-                                      'собираетесь записать перевод')
+                                 text=f'{LanguageConstants.error_drive_not_exist}')
             error.show()
         self.__check_readiness()
 
@@ -188,14 +191,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 vertical_layout_widget.setLayout(vertical_layout)
                 self.__ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
             case False:
-                info_label = QtWidgets.QLabel('Указанная директория с модом\n-\nне существует')
+                info_label = QtWidgets.QLabel(
+                    f'{self.__prepper.get_original_mode_path()} - {LanguageConstants.error_folder_does_not_exist}')
                 font = QtGui.QFont()
                 font.setBold(True)
                 info_label.setFont(font)
                 info_label.setAlignment(QtCore.Qt.AlignHCenter)
                 self.__ui.need_translate_scrollArea.setWidget(info_label)
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text='Указанная директория с модом - не существует')
+                                     text=f'{self.__prepper.get_original_mode_path()} -'
+                                          f' {LanguageConstants.error_folder_does_not_exist}')
                 error.show()
 
     def __check_all_checkboxes(self):
@@ -216,11 +221,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 enabled.append(Path(checkbox.objectName()))
         return tuple(enabled)
 
-    def __donate_clicked(self):
-        thanks_window = CustomDialog(parent=self,
-                                     text='Спасибо, что так высоко оценили мой труд!\nДанная функция находится'
-                                          ' в разработке, так что пока принимаю лучи добра! :)')
-        thanks_window.show()
+    @staticmethod
+    def __donate_clicked():
+        webbrowser.open('https://boosty.to/reimis')
 
     @pyqtSlot(str)
     def add_text_in_console(self, text: str):
