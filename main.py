@@ -167,21 +167,7 @@ class Performer(QObject):
         info = f"{LanguageConstants.start_forming_hierarchy} {self.__calculate_time_delta()}\n"
         self.info_console_value.emit(self.__change_text_style(info, 'green'))
         self.info_label_value.emit(LanguageConstants.forming_process)
-        if not self.__paths.get_target_path().exists():
-            flag_is_exist = False
-            parent = self.__paths.get_target_path()
-            item = 0
-            while flag_is_exist is False:
-                name = parent.name
-                parent = parent.parent
-                if parent.exists():
-                    (parent / name).mkdir()
-                    info = f"{LanguageConstants.folder_created} {name} - {self.__calculate_time_delta()}\n"
-                    self.info_console_value.emit(info)
-                    parent = self.__paths.get_target_path()
-                if self.__paths.get_target_path().exists():
-                    flag_is_exist = True
-                item += 1
+        self.__paths.get_target_path().mkdir(parents=True)
         for directory in self.__paths.get_file_hierarchy_only_dirs():
             directory: Path
             try:
