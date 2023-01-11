@@ -22,6 +22,7 @@ class LanguageConstants:
     final = ''
     final_time = ''
 
+    error_settings_file_not_exist = ''
     error_folder_does_not_exist = ''
     error_drive_not_exist = ''
 
@@ -48,6 +49,7 @@ class LanguageConstants:
         cls.final = _translate("Constants", "Обработка данных закончена")
         cls.final_time = _translate("Constants", "Программа закончила свою работу за")
 
+        cls.error_settings_file_not_exist = _translate("Constants", "Место хранения настроек - не найдено")
         cls.error_folder_does_not_exist = _translate("Constants", "Директория не существует")
         cls.error_drive_not_exist = _translate("Constants", "Выбранный диск не существует")
 
