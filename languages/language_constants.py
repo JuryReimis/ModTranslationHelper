@@ -2,6 +2,8 @@ from PyQt5 import QtCore
 
 
 class LanguageConstants:
+    program_version = ''
+
     start_forming_hierarchy = ''
     start_file_processing = ''
     file_opened = ''
@@ -29,6 +31,8 @@ class LanguageConstants:
     @classmethod
     def retranslate(cls):
         _translate = QtCore.QCoreApplication.translate
+        cls.program_version = _translate("Constants", "Версия")
+
         cls.start_forming_hierarchy = _translate("Constants", "Начато формирование иерархии директорий -")
         cls.start_file_processing = _translate("Constants", "Начата обработка файлов")
         cls.file_opened = _translate("Constants", "Начата работа с файлом")

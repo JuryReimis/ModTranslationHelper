@@ -27,6 +27,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.setupUi(self)
         self.__init_settings()
         self.__init_languages()
+        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} 1.1.0')
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
