@@ -25,8 +25,8 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
-        self.__init_languages()
         self.__init_settings()
+        self.__init_languages()
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
@@ -46,13 +46,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.check_all_pushButton.clicked.connect(self.__check_all_checkboxes)
         self.__ui.uncheck_all_pushButton.clicked.connect(self.__unchecked_all_checkboxes)
         self.__ui.run_pushButton.clicked.connect(self.__run)
+        self.__ui.discord_link__pushButton.clicked.connect(self.__discord_clicked)
         self.__ui.donate_pushButton.clicked.connect(self.__donate_clicked)
         self.__ui.game_directory_lineEdit.editingFinished.connect(self.__game_directory_changed)
         self.__ui.original_directory_lineEdit.editingFinished.connect(self.__original_directory_changed)
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
-        self.__ui.comboBox.currentTextChanged.connect(self.__change_language)
+        self.__ui.translation_comboBox.currentTextChanged.connect(self.__change_language)
 
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
@@ -66,8 +67,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for directory in TRANSLATIONS_DIR.iterdir():
             if directory.is_dir() and directory.name != "__pycache__":
                 languages_list.append(directory.name)
-        self.__ui.comboBox.addItems(languages_list)
-        self.__ui.comboBox.setCurrentIndex(0)
+        self.__ui.translation_comboBox.addItems(languages_list)
+        self.__ui.translation_comboBox.setCurrentText(self.__settings.get_app_language())
         self.__change_language()
 
     def __init_settings(self):
@@ -105,10 +106,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 app.removeTranslator(_translator)
 
         del_translators()
+        self.__settings.set_app_language(self.__ui.translation_comboBox.currentText())
 
         self.__translators.clear()
-        if self.__ui.comboBox.currentText() != 'Русский':
-            current_language = self.__ui.comboBox.currentText()
+        if self.__ui.translation_comboBox.currentText() != 'Русский':
+            current_language = self.__ui.translation_comboBox.currentText()
             translation_files = [TRANSLATIONS_DIR / current_language / file for file in
                                  (TRANSLATIONS_DIR / current_language).iterdir() if
                                  (TRANSLATIONS_DIR / current_language).exists() and file.is_file()]
@@ -246,6 +248,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if isinstance(checkbox, QtWidgets.QCheckBox) and checkbox.isChecked():
                 enabled.append(Path(checkbox.objectName()))
         return tuple(enabled)
+
+    @staticmethod
+    def __discord_clicked():
+        webbrowser.open('https://discord.gg/zcAbHfUSCt')
 
     @staticmethod
     def __donate_clicked():
