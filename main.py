@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import re
 import time
@@ -40,10 +41,14 @@ class Prepper:
         return self._game_path_validate_result
 
     def set_original_mode_path(self, original_mode_path: str, original_language: str):
-        self._original_mode_path = Path(original_mode_path) / original_language
-        self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
-        if self.get_original_mode_path_validate_result():
-            self._create_localization_hierarchy()
+        if original_mode_path == '':
+            self._original_mode_path_validate_result = self.validator.validate_original_path(Path(original_mode_path))
+            self._original_mode_path = Path(original_mode_path)
+        else:
+            self._original_mode_path = Path(original_mode_path) / original_language
+            self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
+            if self.get_original_mode_path_validate_result():
+                self._create_localization_hierarchy()
 
     def get_original_mode_path(self) -> Path:
         return self._original_mode_path
@@ -132,6 +137,66 @@ class Validator:
         return path_existence
 
 
+class Settings:
+    __settings = {
+        'last_game_directory': "",
+        'last_original_mode_directory': "",
+        'last_previous_directory': "",
+        'last_target_directory': "",
+        'last_original_language': "english",
+        'last_target_language': "russian"
+    }
+
+    def __init__(self, local_data_path: Path | None):
+        self.__local_data_path = local_data_path
+        if self.__local_data_path is not None:
+            if self.__local_data_path.exists() and (self.__local_data_path / 'settings.json').exists():
+                with (self.__local_data_path / 'settings.json').open(mode='r') as settings:
+                    self.__settings = self.__settings | json.load(settings)
+            else:
+                Path.mkdir(self.__local_data_path, exist_ok=True)
+                self.save_settings_data()
+
+    def set_last_game_directory(self, value: Path):
+        self.__settings['last_game_directory'] = str(value)
+
+    def get_last_game_directory(self) -> str:
+        return self.__settings.get('last_game_directory', '')
+
+    def set_last_original_mode_directory(self, value: Path):
+        self.__settings['last_original_mode_directory'] = str(value.parent)
+
+    def get_last_original_mode_directory(self) -> str:
+        return self.__settings.get('last_original_mode_directory', '')
+
+    def set_last_previous_directory(self, value: Path):
+        self.__settings['last_previous_directory'] = str(value)
+
+    def get_last_previous_directory(self) -> str:
+        return self.__settings.get('last_previous_directory', '')
+
+    def set_last_target_directory(self, value: Path):
+        self.__settings['last_target_directory'] = str(value)
+
+    def get_last_target_directory(self) -> str:
+        return self.__settings.get('last_target_directory', '')
+
+    def set_last_languages(self, original, target):
+        self.__settings['last_original_language'] = original
+        self.__settings['last_target_language'] = target
+
+    def get_last_original_language(self):
+        return self.__settings.get('last_original_language', 'english')
+
+    def get_last_target_language(self):
+        return self.__settings.get('last_target_language', 'russian')
+
+    def save_settings_data(self):
+        if self.__local_data_path is not None:
+            with (self.__local_data_path / 'settings.json').open(mode='w') as settings:
+                json.dump(self.__settings, settings, indent=4)
+
+
 class Performer(QObject):
     info_console_value = pyqtSignal(str)
     info_label_value = pyqtSignal(str)
@@ -167,7 +232,8 @@ class Performer(QObject):
         info = f"{LanguageConstants.start_forming_hierarchy} {self.__calculate_time_delta()}\n"
         self.info_console_value.emit(self.__change_text_style(info, 'green'))
         self.info_label_value.emit(LanguageConstants.forming_process)
-        self.__paths.get_target_path().mkdir(parents=True)
+        if not self.__paths.get_target_path().exists():
+            self.__paths.get_target_path().mkdir(parents=True)
         for directory in self.__paths.get_file_hierarchy_only_dirs():
             directory: Path
             try:
@@ -364,7 +430,7 @@ class Performer(QObject):
                                                      self.__paths.get_original_files_size())
                     print(*self.__translated_list, file=target_file, sep='', end='')
             except Exception as error:
-                error_info = f"{LanguageConstants.error_with_data_processing}:\n -{error}\n"
+                error_info = f"{LanguageConstants.error_with_data_processing}:\n {error}\n"
                 self.info_console_value.emit(self.__change_text_style(error_info, 'red'))
 
     def run(self):
