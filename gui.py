@@ -10,12 +10,13 @@ from PyQt5.QtCore import pyqtSlot
 
 from CustomDialog import Ui_Dialog
 from languages.language_constants import LanguageConstants
-from main import Prepper, Performer
+from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
 from deep_translator import GoogleTranslator
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
+HOME_DIR = Path.home()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -25,11 +26,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
         self.__init_languages()
+        self.__init_settings()
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
 
-        self.__last_selected_directory = '/'
         self.__ui.run_pushButton.setEnabled(False)
         for language in GoogleTranslator.get_supported_languages():
             self.__ui.selector_original_language_comboBox.addItem(language)
@@ -56,6 +57,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
 
+        self.__preset_values()
+        self.__check_readiness()
+
     def __init_languages(self):
         self.__translators = []
         languages_list = ['Русский']
@@ -65,6 +69,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.comboBox.addItems(languages_list)
         self.__ui.comboBox.setCurrentIndex(0)
         self.__change_language()
+
+    def __init_settings(self):
+        if (HOME_DIR / 'Documents').exists():
+            local_data_path = (HOME_DIR / 'Documents' / 'ModTranslationHelper')
+        else:
+            local_data_path = None
+            error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist)
+            error.show()
+        self.__settings = Settings(local_data_path)
+
+    def __preset_values(self):
+        last_game_path = self.__settings.get_last_game_directory()
+        last_original_path = self.__settings.get_last_original_mode_directory()
+        last_previous_path = self.__settings.get_last_previous_directory()
+        last_target_path = self.__settings.get_last_target_directory()
+
+        self.__ui.game_directory_lineEdit.setText(last_game_path)
+        self.__ui.original_directory_lineEdit.setText(last_original_path)
+        self.__ui.previous_directory_lineEdit.setText(last_previous_path)
+        self.__ui.target_directory_lineEdit.setText(last_target_path)
+
+        self.__game_directory_changed()
+        self.__original_directory_changed()
+        self.__previous_directory_changed()
+        self.__target_directory_changed()
 
     def __change_language(self):
         def set_translators():
@@ -94,27 +123,27 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
-                                                                 directory=self.__last_selected_directory)
+                                                                 directory=self.__settings.get_last_game_directory())
         self.__ui.game_directory_lineEdit.setText(chosen_path)
-        self.__last_selected_directory = chosen_path
         self.__game_directory_changed()
 
     def __game_directory_changed(self):
         self.__prepper.set_game_path(self.__ui.game_directory_lineEdit.text())
         if not self.__prepper.get_game_path_validate_result():
-            self.__ui.game_directory_lineEdit.setText('')
-            if not str(self.__prepper.get_game_path()) == '.':
+            self.__ui.game_directory_lineEdit.clear()
+            if str(self.__prepper.get_game_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
                                      text=f'{self.__prepper.get_game_path()} '
                                           f'- {LanguageConstants.error_folder_does_not_exist}')
                 error.show()
+        else:
+            self.__settings.set_last_game_directory(self.__prepper.get_game_path())
         self.__check_readiness()
 
     def __select_original_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
-                                                                 directory=self.__last_selected_directory)
+                                                                 directory=self.__settings.get_last_original_mode_directory())
         self.__ui.original_directory_lineEdit.setText(chosen_path)
-        self.__last_selected_directory = chosen_path
         self.__original_directory_changed()
 
     def __original_directory_changed(self):
@@ -122,41 +151,52 @@ class MainWindow(QtWidgets.QMainWindow):
             original_mode_path=self.__ui.original_directory_lineEdit.text(),
             original_language=self.__ui.selector_original_language_comboBox.currentText()
         )
-        self.__form_checkbox_cascade(self.__prepper.get_original_mode_path_validate_result())
         if not self.__prepper.get_original_mode_path_validate_result():
-            self.__ui.original_directory_lineEdit.setText('')
+            if str(self.__prepper.get_original_mode_path()) != '.':
+                error = CustomDialog(parent=self.__ui.centralwidget,
+                                     text=f'{self.__prepper.get_original_mode_path()} -'
+                                          f' {LanguageConstants.error_folder_does_not_exist}')
+                error.show()
+            self.__ui.original_directory_lineEdit.clear()
+        else:
+            self.__form_checkbox_cascade()
+            self.__settings.set_last_original_mode_directory(self.__prepper.get_original_mode_path())
         self.__check_readiness()
 
     def __select_previous_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
-                                                                 directory=self.__last_selected_directory)
+                                                                 directory=self.__settings.get_last_previous_directory())
         self.__ui.previous_directory_lineEdit.setText(chosen_path)
-        self.__last_selected_directory = chosen_path
         self.__previous_directory_changed()
 
     def __previous_directory_changed(self):
         self.__prepper.set_previous_path(previous_path=self.__ui.previous_directory_lineEdit.text())
         if not self.__prepper.get_previous_path_validate_result():
-            self.__ui.previous_directory_lineEdit.setText('')
-            if not str(self.__prepper.get_previous_path()) == '.':
+            self.__ui.previous_directory_lineEdit.clear()
+            if str(self.__prepper.get_previous_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
                                      text=f'{self.__prepper.get_previous_path()} - '
                                           f'{LanguageConstants.error_folder_does_not_exist}')
                 error.show()
+        else:
+            self.__settings.set_last_previous_directory(self.__prepper.get_previous_path())
 
     def __select_target_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
-                                                                 directory=self.__last_selected_directory)
+                                                                 directory=self.__settings.get_last_target_directory())
         self.__ui.target_directory_lineEdit.setText(chosen_path)
-        self.__last_selected_directory = chosen_path
         self.__target_directory_changed()
 
     def __target_directory_changed(self):
         self.__prepper.set_target_path(self.__ui.target_directory_lineEdit.text())
         if not self.__prepper.get_target_path_validate_result():
-            error = CustomDialog(parent=self.__ui.centralwidget,
-                                 text=f'{LanguageConstants.error_drive_not_exist}')
-            error.show()
+            if str(self.__prepper.get_target_path()) != '.':
+                error = CustomDialog(parent=self.__ui.centralwidget,
+                                     text=f'{LanguageConstants.error_drive_not_exist}')
+                error.show()
+            self.__ui.target_directory_lineEdit.clear()
+        else:
+            self.__settings.set_last_target_directory(self.__prepper.get_target_path())
         self.__check_readiness()
 
     def __original_language_changed(self):
@@ -176,32 +216,18 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__ui.run_pushButton.setEnabled(False)
 
-    def __form_checkbox_cascade(self, validate_result: bool):
-        match validate_result:
-            case True:
-                files = self.__prepper.get_file_hierarchy()
-                vertical_layout_widget = QtWidgets.QWidget()
-                vertical_layout = QtWidgets.QVBoxLayout(vertical_layout_widget)
-                for file_name in files:
-                    file_name: Path
-                    check_box = QtWidgets.QCheckBox(str(file_name))
-                    check_box.setObjectName(str(file_name))
-                    check_box.setChecked(True)
-                    vertical_layout.addWidget(check_box)
-                vertical_layout_widget.setLayout(vertical_layout)
-                self.__ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
-            case False:
-                info_label = QtWidgets.QLabel(
-                    f'{self.__prepper.get_original_mode_path()} - {LanguageConstants.error_folder_does_not_exist}')
-                font = QtGui.QFont()
-                font.setBold(True)
-                info_label.setFont(font)
-                info_label.setAlignment(QtCore.Qt.AlignHCenter)
-                self.__ui.need_translate_scrollArea.setWidget(info_label)
-                error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{self.__prepper.get_original_mode_path()} -'
-                                          f' {LanguageConstants.error_folder_does_not_exist}')
-                error.show()
+    def __form_checkbox_cascade(self):
+        files = self.__prepper.get_file_hierarchy()
+        vertical_layout_widget = QtWidgets.QWidget()
+        vertical_layout = QtWidgets.QVBoxLayout(vertical_layout_widget)
+        for file_name in files:
+            file_name: Path
+            check_box = QtWidgets.QCheckBox(str(file_name))
+            check_box.setObjectName(str(file_name))
+            check_box.setChecked(True)
+            vertical_layout.addWidget(check_box)
+        vertical_layout_widget.setLayout(vertical_layout)
+        self.__ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
 
     def __check_all_checkboxes(self):
         for checkbox in self.__ui.need_translate_scrollArea.widget().children():
@@ -247,6 +273,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.exec_()
 
     def __run(self):
+        self.__settings.set_last_languages(original=self.__ui.selector_original_language_comboBox.currentText(),
+                                           target=self.__ui.selector_target_language_comboBox.currentText())
+        self.__settings.save_settings_data()
         self.__ui.progressBar.setValue(0)
         self.__performer = Performer(
             paths=self.__prepper,
