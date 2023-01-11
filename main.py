@@ -144,7 +144,9 @@ class Settings:
         'last_previous_directory': "",
         'last_target_directory': "",
         'last_original_language': "english",
-        'last_target_language': "russian"
+        'last_target_language': "russian",
+
+        'app_language': "Русский"
     }
 
     def __init__(self, local_data_path: Path | None):
@@ -185,11 +187,17 @@ class Settings:
         self.__settings['last_original_language'] = original
         self.__settings['last_target_language'] = target
 
+    def set_app_language(self, value):
+        self.__settings['app_language'] = value
+
     def get_last_original_language(self):
         return self.__settings.get('last_original_language', 'english')
 
     def get_last_target_language(self):
         return self.__settings.get('last_target_language', 'russian')
+
+    def get_app_language(self):
+        return self.__settings.get('app_language', 0)
 
     def save_settings_data(self):
         if self.__local_data_path is not None:
