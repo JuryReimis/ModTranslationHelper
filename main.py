@@ -120,7 +120,10 @@ class Validator:
         return path_existence
 
     def validate_original_path(self, path: Path, original_language: str):
-        path_existence = self.__path_existence(path / original_language) and self.__drive_existence(path)
+        if original_language is not None:
+            path_existence = self.__path_existence(path / original_language) and self.__drive_existence(path)
+        else:
+            path_existence = False
         return path_existence
 
     def validate_previous_path(self, path: Path):
@@ -207,12 +210,12 @@ class Performer(QObject):
     finish_thread = pyqtSignal()
 
     def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
-                 need_translate: bool = False, need_translate_tuple: tuple | None = None):
+                 languages_dict: dict = None, need_translate: bool = False, need_translate_tuple: tuple | None = None):
         super(Performer, self).__init__()
         self.__paths = paths
-        self.__original_language = original_language
-        self.__target_language = target_language
-        self.__translator = GoogleTranslator(source=self.__original_language, target=self.__target_language)
+        self.__original_language = languages_dict.get(original_language, None)
+        self.__target_language = languages_dict.get(target_language, None)
+        self.__translator = GoogleTranslator(source=original_language, target=target_language)
         self.__need_translate_list = need_translate_tuple if need_translate is True else tuple()
 
         self.__start_running_time = None
@@ -242,7 +245,7 @@ class Performer(QObject):
             directory = Path(str(file).replace(self.__original_language, self.__target_language)).parent
             try:
                 if not (self.__paths.get_target_path() / directory).exists():
-                    (self.__paths.get_target_path() / directory).mkdir()
+                    (self.__paths.get_target_path() / directory).mkdir(parents=True)
                     info = f"{LanguageConstants.folder_created} {directory} - {self.__calculate_time_delta()}\n"
                     self.info_console_value.emit(info)
             except Exception as error:

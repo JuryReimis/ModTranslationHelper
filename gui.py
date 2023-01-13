@@ -1,3 +1,4 @@
+import json
 import math
 import webbrowser
 
@@ -27,6 +28,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.setupUi(self)
         self.__init_settings()
         self.__init_languages()
+        self.__init_languages_dict()
         self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} 1.1.0')
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
@@ -81,16 +83,26 @@ class MainWindow(QtWidgets.QMainWindow):
             error.show()
         self.__settings = Settings(local_data_path)
 
+    def __init_languages_dict(self):
+        with (BASE_DIR / 'language_names.json').open(mode='r') as language_dict:
+            self.__languages_dict = json.load(language_dict)
+
     def __preset_values(self):
         last_game_path = self.__settings.get_last_game_directory()
         last_original_path = self.__settings.get_last_original_mode_directory()
         last_previous_path = self.__settings.get_last_previous_directory()
         last_target_path = self.__settings.get_last_target_directory()
 
+        last_original_language = self.__settings.get_last_original_language()
+        last_target_language = self.__settings.get_last_target_language()
+
         self.__ui.game_directory_lineEdit.setText(last_game_path)
         self.__ui.original_directory_lineEdit.setText(last_original_path)
         self.__ui.previous_directory_lineEdit.setText(last_previous_path)
         self.__ui.target_directory_lineEdit.setText(last_target_path)
+
+        self.__ui.selector_original_language_comboBox.setCurrentText(last_original_language)
+        self.__ui.selector_target_language_comboBox.setCurrentText(last_target_language)
 
         self.__game_directory_changed()
         self.__original_directory_changed()
@@ -152,7 +164,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __original_directory_changed(self):
         self.__prepper.set_original_mode_path(
             original_mode_path=self.__ui.original_directory_lineEdit.text(),
-            original_language=self.__ui.selector_original_language_comboBox.currentText()
+            original_language=self.__languages_dict['GoogleTranslator'].get(
+                self.__ui.selector_original_language_comboBox.currentText(), None)
         )
         if not self.__prepper.get_original_mode_path_validate_result():
             if str(self.__prepper.get_original_mode_path()) != '.':
@@ -288,6 +301,7 @@ class MainWindow(QtWidgets.QMainWindow):
             paths=self.__prepper,
             original_language=self.__ui.selector_original_language_comboBox.currentText(),
             target_language=self.__ui.selector_target_language_comboBox.currentText(),
+            languages_dict=self.__languages_dict['GoogleTranslator'],
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes()
         )

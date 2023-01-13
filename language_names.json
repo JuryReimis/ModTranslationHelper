@@ -1,0 +1,11 @@
+{
+  "GoogleTranslator": {
+    "english": "english",
+    "french": "french",
+    "german": "german",
+    "korean": "korean",
+    "russian": "russian",
+    "chinese (simplified)": "simp_chinese",
+    "spanish": "spanish"
+  }
+}
