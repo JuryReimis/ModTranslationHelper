@@ -17,6 +17,7 @@ eggs/
 icons/
 lib/
 lib64/
+linguist files/
 parts/
 sdist/
 test_ui/
