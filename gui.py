@@ -157,7 +157,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.__prepper.get_original_mode_path_validate_result():
             if str(self.__prepper.get_original_mode_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{self.__prepper.get_original_mode_path()} -'
+                                     text=f'{self.__prepper.get_original_mode_path() / self.__ui.selector_original_language_comboBox.currentText()} -'
                                           f' {LanguageConstants.error_folder_does_not_exist}')
                 error.show()
             self.__ui.original_directory_lineEdit.clear()
