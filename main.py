@@ -18,7 +18,6 @@ class Prepper:
         self._previous_path = previous_path
 
         self._file_hierarchy = []
-        self._file_hierarchy_only_dirs = []
         self._previous_files = []
         self._original_files_size = 0
 
@@ -42,13 +41,15 @@ class Prepper:
 
     def set_original_mode_path(self, original_mode_path: str, original_language: str):
         if original_mode_path == '':
-            self._original_mode_path_validate_result = self.validator.validate_original_path(Path(original_mode_path))
+            self._original_mode_path_validate_result = self.validator.validate_original_path(Path(original_mode_path),
+                                                                                             original_language)
             self._original_mode_path = Path(original_mode_path)
         else:
-            self._original_mode_path = Path(original_mode_path) / original_language
-            self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path)
+            self._original_mode_path = Path(original_mode_path)
+            self._original_mode_path_validate_result = self.validator.validate_original_path(self._original_mode_path,
+                                                                                             original_language)
             if self.get_original_mode_path_validate_result():
-                self._create_localization_hierarchy()
+                self._create_localization_hierarchy(original_language=original_language)
 
     def get_original_mode_path(self) -> Path:
         return self._original_mode_path
@@ -79,25 +80,19 @@ class Prepper:
     def get_target_path_validate_result(self) -> bool:
         return self._target_path_validate_result
 
-    def _create_localization_hierarchy(self):
+    def _create_localization_hierarchy(self, original_language=None):
         r"""Создает иерархию файлов из директории _original_mode_path, а также считает размер всех файлов в сумме"""
         self._original_files_size = 0
         self._file_hierarchy = []
-        self._file_hierarchy_only_dirs = []
-        for step in self._original_mode_path.rglob('*'):
-            if step.is_file():
+        for step in self._original_mode_path.rglob(f'*l_{original_language}*'):
+            if step.is_file() and step.suffix in ['.yml', '.txt', ]:
                 self._file_hierarchy.append(step.relative_to(self._original_mode_path))
                 self._original_files_size += step.stat().st_size
-            elif step.is_dir():
-                self._file_hierarchy_only_dirs.append(step.relative_to(self._original_mode_path))
 
     def get_file_hierarchy(self) -> list:
         r"""Возвращается путь ко всем файлам, относительно пути, расположения локализации основного мода.
                 Названия файлов не изменены под новый(target_language) язык"""
         return self._file_hierarchy
-
-    def get_file_hierarchy_only_dirs(self) -> list:
-        return self._file_hierarchy_only_dirs
 
     def get_previous_files(self):
         for step in self._previous_path.rglob('*'):
@@ -124,8 +119,8 @@ class Validator:
         path_existence = self.__path_existence(path) and self.__drive_existence(path)
         return path_existence
 
-    def validate_original_path(self, path: Path):
-        path_existence = self.__path_existence(path) and self.__drive_existence(path)
+    def validate_original_path(self, path: Path, original_language: str):
+        path_existence = self.__path_existence(path / original_language) and self.__drive_existence(path)
         return path_existence
 
     def validate_previous_path(self, path: Path):
@@ -153,7 +148,7 @@ class Settings:
         self.__local_data_path = local_data_path
         if self.__local_data_path is not None:
             if self.__local_data_path.exists() and (self.__local_data_path / 'settings.json').exists():
-                with (self.__local_data_path / 'settings.json').open(mode='r') as settings:
+                with (self.__local_data_path / 'settings.json').open(mode='r', encoding='utf-8-sig') as settings:
                     self.__settings = self.__settings | json.load(settings)
             else:
                 Path.mkdir(self.__local_data_path, exist_ok=True)
@@ -166,7 +161,7 @@ class Settings:
         return self.__settings.get('last_game_directory', '')
 
     def set_last_original_mode_directory(self, value: Path):
-        self.__settings['last_original_mode_directory'] = str(value.parent)
+        self.__settings['last_original_mode_directory'] = str(value)
 
     def get_last_original_mode_directory(self) -> str:
         return self.__settings.get('last_original_mode_directory', '')
@@ -201,7 +196,7 @@ class Settings:
 
     def save_settings_data(self):
         if self.__local_data_path is not None:
-            with (self.__local_data_path / 'settings.json').open(mode='w') as settings:
+            with (self.__local_data_path / 'settings.json').open(mode='w', encoding='utf-8-sig') as settings:
                 json.dump(self.__settings, settings, indent=4)
 
 
@@ -242,8 +237,9 @@ class Performer(QObject):
         self.info_label_value.emit(LanguageConstants.forming_process)
         if not self.__paths.get_target_path().exists():
             self.__paths.get_target_path().mkdir(parents=True)
-        for directory in self.__paths.get_file_hierarchy_only_dirs():
-            directory: Path
+        for file in self.__paths.get_file_hierarchy():
+            file: Path
+            directory = Path(str(file).replace(self.__original_language, self.__target_language)).parent
             try:
                 if not (self.__paths.get_target_path() / directory).exists():
                     (self.__paths.get_target_path() / directory).mkdir()
