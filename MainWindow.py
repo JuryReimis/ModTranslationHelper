@@ -63,7 +63,7 @@ class Ui_MainWindow(object):
         self.progressBar.setSizePolicy(sizePolicy)
         self.progressBar.setMinimumSize(QtCore.QSize(265, 0))
         self.progressBar.setMaximumSize(QtCore.QSize(265, 16777215))
-        self.progressBar.setMaximum(100000)
+        self.progressBar.setMaximum(100000000)
         self.progressBar.setProperty("value", 0)
         self.progressBar.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.progressBar.setTextVisible(True)
