@@ -13,7 +13,7 @@ from CustomDialog import Ui_Dialog
 from languages.language_constants import LanguageConstants
 from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
-from deep_translator import GoogleTranslator
+from test_ui.settings import Ui_Settings
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
@@ -28,14 +28,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.setupUi(self)
         self.__init_settings()
         self.__init_languages()
+        self.__init_menubar()
         self.__init_languages_dict()
-        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} 1.1.0')
+        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} 1.2.0')
         MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
 
         self.__ui.run_pushButton.setEnabled(False)
-        for language in GoogleTranslator.get_supported_languages():
+
+        for language in self.__languages_dict.get(self.__settings.get_translator_api()).keys():
             self.__ui.selector_original_language_comboBox.addItem(language)
             self.__ui.selector_target_language_comboBox.addItem(language)
         self.__ui.selector_original_language_comboBox.setCurrentText('english')
@@ -82,6 +84,23 @@ class MainWindow(QtWidgets.QMainWindow):
             error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist)
             error.show()
         self.__settings = Settings(local_data_path)
+
+    def __init_menubar(self):
+        def open_settings():
+            settings = SettingsWindow(parent=self, settings=self.__settings)
+            settings.exec_()
+            self.__ui.translation_comboBox.setCurrentText(self.__settings.get_app_language())
+            self.__change_language()
+
+        menu = QtWidgets.QMenuBar()
+        main_menu = QtWidgets.QMenu(LanguageConstants.menu, self)
+        open_settings_action = QtWidgets.QAction(LanguageConstants.settings, self)
+        open_settings_action.triggered.connect(open_settings)
+        main_menu.addAction(open_settings_action)
+
+        menu.addMenu(main_menu)
+
+        self.setMenuBar(menu)
 
     def __init_languages_dict(self):
         with (BASE_DIR / 'language_names.json').open(mode='r') as language_dict:
@@ -293,6 +312,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.exec_()
 
     def __run(self):
+        self.__ui.run_pushButton.setEnabled(False)
         self.__settings.set_last_languages(original=self.__ui.selector_original_language_comboBox.currentText(),
                                            target=self.__ui.selector_target_language_comboBox.currentText())
         self.__settings.save_settings_data()
@@ -305,8 +325,6 @@ class MainWindow(QtWidgets.QMainWindow):
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes()
         )
-
-        self.__ui.run_pushButton.setEnabled(False)
 
         self.__running_thread = QtCore.QThread()
 
@@ -323,13 +341,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.start()
 
 
+class SettingsWindow(QtWidgets.QDialog):
+    def __init__(self, parent=None, settings: Settings = None):
+        super(SettingsWindow, self).__init__(parent)
+        self.__ui = Ui_Settings()
+        self.__ui.setupUi(self)
+
+        self.__settings = settings
+        self.__set_initial_values()
+
+        self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
+        self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
+
+    def __set_initial_values(self):
+        self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
+        self.__ui.disable_original_line_checkBox.setChecked(False)
+
+    def __show_warning(self):
+        if self.__ui.disable_original_line_checkBox.isChecked():
+            window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
+                                  custom_title='Предупреждение')
+            window.exec_()
+
+    def save_settings(self):
+        self.__settings.save_settings_data()
+        self.close()
+
+
 class CustomDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent=None, text=None):
+    def __init__(self, parent=None, text=None, custom_title=None):
         super(CustomDialog, self).__init__(parent)
         self.__ui = Ui_Dialog()
         self.__ui.setupUi(self)
-        CustomDialog.setFixedSize(self, self.size())
+        if custom_title:
+            self.setWindowTitle(custom_title)
         self.setWindowIcon(QtGui.QIcon('icons/error icon.jpg'))
 
         self.__ui.no_path_error_textBrowser.setText(text)
