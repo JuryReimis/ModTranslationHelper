@@ -144,6 +144,8 @@ class Settings:
         'last_original_language': "english",
         'last_target_language': "russian",
 
+        'translator_api': "GoogleTranslator",
+
         'app_language': "Русский"
     }
 
@@ -156,6 +158,14 @@ class Settings:
             else:
                 Path.mkdir(self.__local_data_path, exist_ok=True)
                 self.save_settings_data()
+            self.available_apis = self.__get_translator_apis()
+
+    @staticmethod
+    def __get_translator_apis():
+        _ = {
+            'GoogleTranslator': GoogleTranslator,
+        }
+        return _
 
     def set_last_game_directory(self, value: Path):
         self.__settings['last_game_directory'] = str(value)
@@ -196,6 +206,9 @@ class Settings:
 
     def get_app_language(self):
         return self.__settings.get('app_language', 0)
+
+    def get_translator_api(self):
+        return self.__settings.get('translator_api', None)
 
     def save_settings_data(self):
         if self.__local_data_path is not None:
@@ -309,7 +322,7 @@ class Performer(QObject):
                     for line in file_with_previous_version.readlines():
                         localization_key = self.__get_localization_key(line=line)
                         if localization_key is not None:
-                            self.__previous_version_dictionary[localization_key] = line
+                            self.__previous_version_dictionary[localization_key] = line.rstrip()
             except Exception as error:
                 error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
                 self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
