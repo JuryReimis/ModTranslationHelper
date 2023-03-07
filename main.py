@@ -146,7 +146,7 @@ class Settings:
 
         'translator_api': "GoogleTranslator",
 
-        'app_language': "Русский"
+        'app_language': "Русский",
     }
 
     def __init__(self, local_data_path: Path | None):
@@ -159,6 +159,7 @@ class Settings:
                 Path.mkdir(self.__local_data_path, exist_ok=True)
                 self.save_settings_data()
             self.available_apis = self.__get_translator_apis()
+            self.disable_original_line = False
 
     @staticmethod
     def __get_translator_apis():
@@ -210,7 +211,9 @@ class Settings:
     def get_translator_api(self):
         return self.__settings.get('translator_api', None)
 
-    def save_settings_data(self):
+    def save_settings_data(self, disable_original_line: bool = None):
+        if disable_original_line is not None:
+            self.disable_original_line = disable_original_line
         if self.__local_data_path is not None:
             with (self.__local_data_path / 'settings.json').open(mode='w', encoding='utf-8-sig') as settings:
                 json.dump(self.__settings, settings, indent=4)
@@ -222,14 +225,23 @@ class Performer(QObject):
     progress_bar_value = pyqtSignal(float)
     finish_thread = pyqtSignal()
 
-    def __init__(self, paths: Prepper, original_language: str = None, target_language: str = None,
-                 languages_dict: dict = None, need_translate: bool = False, need_translate_tuple: tuple | None = None):
+    def __init__(
+            self,
+            paths: Prepper,
+            original_language: str = None,
+            target_language: str = None,
+            languages_dict: dict = None,
+            need_translate: bool = False,
+            need_translate_tuple: tuple | None = None,
+            disable_original_line: bool = False
+    ):
         super(Performer, self).__init__()
         self.__paths = paths
         self.__original_language = languages_dict.get(original_language, None)
         self.__target_language = languages_dict.get(target_language, None)
         self.__translator = GoogleTranslator(source=original_language, target=target_language)
         self.__need_translate_list = need_translate_tuple if need_translate is True else tuple()
+        self.__disable_original_line = disable_original_line
 
         self.__start_running_time = None
         self.__original_language_dictionary = {}
@@ -372,6 +384,8 @@ class Performer(QObject):
                     modified_line = self.__modify_line(line=localization_value, flag="modify")
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
+                    if self.__disable_original_line:
+                        return line.replace(localization_value, f'\"{normal_string}\"') + ' #NT!'
                     return line + f" <\"{normal_string}\">" + " #NT!"
                 except Exception as error:
                     error_text = f"{LanguageConstants.error_with_translation}\n{line}\n{error}\n"
