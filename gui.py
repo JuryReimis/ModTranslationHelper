@@ -321,9 +321,10 @@ class MainWindow(QtWidgets.QMainWindow):
             paths=self.__prepper,
             original_language=self.__ui.selector_original_language_comboBox.currentText(),
             target_language=self.__ui.selector_target_language_comboBox.currentText(),
-            languages_dict=self.__languages_dict['GoogleTranslator'],
+            languages_dict=self.__languages_dict.get(self.__settings.get_translator_api()),
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
-            need_translate_tuple=self.__get_all_checkboxes()
+            need_translate_tuple=self.__get_all_checkboxes(),
+            disable_original_line=self.__settings.disable_original_line,
         )
 
         self.__running_thread = QtCore.QThread()
@@ -364,7 +365,7 @@ class SettingsWindow(QtWidgets.QDialog):
             window.exec_()
 
     def save_settings(self):
-        self.__settings.save_settings_data()
+        self.__settings.save_settings_data(disable_original_line=self.__ui.disable_original_line_checkBox.isChecked())
         self.close()
 
 
