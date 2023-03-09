@@ -220,7 +220,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__ui.previous_directory_lineEdit.clear()
             if str(self.__prepper.get_previous_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{self.__prepper.get_previous_path()} - '
+                                     text=f'{self.__prepper.get_previous_path() / self.__ui.selector_target_language_comboBox.currentText()} - '
                                           f'{LanguageConstants.error_folder_does_not_exist}')
                 error.show()
             else:
