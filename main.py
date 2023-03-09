@@ -68,12 +68,16 @@ class Prepper:
         return self._original_mode_path_validate_result
 
     @logger.catch()
-    def set_previous_path(self, previous_path: str):
-        self._previous_path = Path(previous_path)
-        self._previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
+    def set_previous_path(self, previous_path: str, target_language: str):
+        if previous_path:
+            self._previous_path = Path(previous_path) / target_language
+            self._previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
+        else:
+            self._previous_path = Path('.')
+            self._previous_path_validate_result = False
 
     def get_previous_path(self) -> Path:
-        return self._previous_path
+        return self._previous_path.parent
 
     def get_previous_path_validate_result(self) -> bool:
         return self._previous_path_validate_result
@@ -105,8 +109,14 @@ class Prepper:
         return self._file_hierarchy
 
     @logger.catch()
-    def get_previous_files(self):
-        for step in self._previous_path.rglob('*'):
+    def get_previous_files(self, target_language: str):
+        self._previous_files = []
+        replace_path = self._previous_path.parent / 'replace' / target_language
+        target_path = self._previous_path / target_language
+        if replace_path.exists():
+            for file in replace_path.rglob('*'):
+                self._previous_files.append(file)
+        for step in target_path.rglob('*'):
             if step.is_file():
                 self._previous_files.append(step)
         return self._previous_files
@@ -365,7 +375,7 @@ class Performer(QObject):
                                      f' {self.__calculate_time_delta()}\n')
         self.info_label_value.emit(LanguageConstants.previous_localization_processing)
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
-        for file in self.__paths.get_previous_files():
+        for file in self.__paths.get_previous_files(target_language=self.__target_language):
             file: Path
             try:
                 with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
@@ -526,6 +536,7 @@ class Performer(QObject):
                 self.info_console_value.emit(self.__change_text_style(error_info, 'red'))
 
     def run(self):
+        logger.info(f'Process start')
         self.__start_running_time = time.time()
         self.__create_directory_hierarchy()
         self.__create_game_localization_dictionary()
