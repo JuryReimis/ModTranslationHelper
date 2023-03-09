@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from PyQt5.QtCore import pyqtSlot
+from loguru import logger
 
 from CustomDialog import Ui_Dialog
 from languages.language_constants import LanguageConstants
@@ -23,6 +24,9 @@ HOME_DIR = Path.home()
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
+        logger.remove(0)
+        logger.add(sink='logs/debug.log', rotation='5 MB', compression="zip")
+
         super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
@@ -66,6 +70,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__preset_values()
         self.__check_readiness()
 
+    @logger.catch()
     def __init_languages(self):
         self.__translators = []
         languages_list = ['Русский']
@@ -76,6 +81,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.translation_comboBox.setCurrentText(self.__settings.get_app_language())
         self.__change_language()
 
+    @logger.catch()
     def __init_settings(self):
         if (HOME_DIR / 'Documents').exists():
             local_data_path = (HOME_DIR / 'Documents' / 'ModTranslationHelper')
@@ -85,6 +91,7 @@ class MainWindow(QtWidgets.QMainWindow):
             error.show()
         self.__settings = Settings(local_data_path)
 
+    @logger.catch()
     def __init_menubar(self):
         def open_settings():
             settings = SettingsWindow(parent=self, settings=self.__settings)
@@ -102,10 +109,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.setMenuBar(menu)
 
+    @logger.catch()
     def __init_languages_dict(self):
         with (BASE_DIR / 'language_names.json').open(mode='r') as language_dict:
             self.__languages_dict = json.load(language_dict)
 
+    @logger.catch()
     def __preset_values(self):
         last_game_path = self.__settings.get_last_game_directory()
         last_original_path = self.__settings.get_last_original_mode_directory()
@@ -244,6 +253,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__ui.need_translate_scrollArea.setEnabled(False)
 
+    @logger.catch()
     def __check_readiness(self):
         if self.__prepper.get_original_mode_path_validate_result() and self.__prepper.get_game_path_validate_result() \
                 and self.__prepper.get_target_path_validate_result():
@@ -251,6 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__ui.run_pushButton.setEnabled(False)
 
+    @logger.catch()
     def __form_checkbox_cascade(self):
         files = self.__prepper.get_file_hierarchy()
         vertical_layout_widget = QtWidgets.QWidget()
@@ -274,6 +285,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if isinstance(checkbox, QtWidgets.QCheckBox):
                 checkbox.setChecked(False)
 
+    @logger.catch()
     def __get_all_checkboxes(self) -> tuple:
         r"""Возвращает кортеж из путей(Path()), отмеченных в ScrollArea"""
         enabled = []
@@ -343,6 +355,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class SettingsWindow(QtWidgets.QDialog):
+    @logger.catch()
     def __init__(self, parent=None, settings: Settings = None):
         super(SettingsWindow, self).__init__(parent)
         self.__ui = Ui_Settings()
@@ -354,6 +367,7 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
 
+    @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
         self.__ui.disable_original_line_checkBox.setChecked(False)
@@ -371,6 +385,7 @@ class SettingsWindow(QtWidgets.QDialog):
 
 class CustomDialog(QtWidgets.QDialog):
 
+    @logger.catch()
     def __init__(self, parent=None, text=None, custom_title=None):
         super(CustomDialog, self).__init__(parent)
         self.__ui = Ui_Dialog()
