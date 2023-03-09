@@ -273,7 +273,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__check_readiness()
 
     def __open_target_directory(self):
-        if self.__prepper.get_target_path_validate_result():
+        if self.__prepper.get_target_path_validate_result() and self.__prepper.get_target_path().exists():
             os.startfile(self.__prepper.get_target_path())
         else:
             error = CustomDialog(parent=self, text=self.__prepper.get_target_path())
