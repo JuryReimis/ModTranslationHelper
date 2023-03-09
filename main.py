@@ -111,7 +111,7 @@ class Prepper:
     @logger.catch()
     def get_previous_files(self, target_language: str):
         self._previous_files = []
-        replace_path = self._previous_path.parent / 'replace' / target_language
+        replace_path = self._previous_path / 'replace' / target_language
         target_path = self._previous_path / target_language
         if replace_path.exists():
             for file in replace_path.rglob('*'):
