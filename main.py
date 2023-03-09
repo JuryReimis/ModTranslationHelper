@@ -70,14 +70,15 @@ class Prepper:
     @logger.catch()
     def set_previous_path(self, previous_path: str, target_language: str):
         if previous_path:
-            self._previous_path = Path(previous_path) / target_language
-            self._previous_path_validate_result = self.validator.validate_previous_path(self._previous_path)
+            self._previous_path = Path(previous_path)
+            self._previous_path_validate_result = self.validator.validate_previous_path(
+                self._previous_path / target_language)
         else:
             self._previous_path = Path('.')
             self._previous_path_validate_result = False
 
     def get_previous_path(self) -> Path:
-        return self._previous_path.parent
+        return self._previous_path
 
     def get_previous_path_validate_result(self) -> bool:
         return self._previous_path_validate_result
@@ -375,6 +376,7 @@ class Performer(QObject):
                                      f' {self.__calculate_time_delta()}\n')
         self.info_label_value.emit(LanguageConstants.previous_localization_processing)
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
+        print(self.__paths.get_previous_files(target_language=self.__target_language))
         for file in self.__paths.get_previous_files(target_language=self.__target_language):
             file: Path
             try:
