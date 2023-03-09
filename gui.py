@@ -1,5 +1,6 @@
 import json
 import math
+import os
 import webbrowser
 
 from PyQt5 import QtWidgets, QtGui, QtCore
@@ -48,9 +49,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.selector_target_language_comboBox.setCurrentText('russian')
 
         self.__ui.game_directory_pushButton.clicked.connect(self.__select_game_directory)
+        self.__ui.game_directory_open_pushButton.clicked.connect(self.__open_game_directory)
         self.__ui.original_directory_pushButton.clicked.connect(self.__select_original_directory)
+        self.__ui.original_directory_open_pushButton.clicked.connect(self.__open_original_directory)
         self.__ui.previous_directory_pushButton.clicked.connect(self.__select_previous_directory)
+        self.__ui.previous_directory_open_pushButton.clicked.connect(self.__open_previous_directory)
         self.__ui.target_directory_pushButton.clicked.connect(self.__select_target_directory)
+        self.__ui.target_directory_open_pushButton.clicked.connect(self.__open_target_directory)
         self.__ui.need_translation_checkBox.stateChanged.connect(self.__need_translate_changed)
         self.__ui.check_all_pushButton.clicked.connect(self.__check_all_checkboxes)
         self.__ui.uncheck_all_pushButton.clicked.connect(self.__unchecked_all_checkboxes)
@@ -183,6 +188,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__settings.set_last_game_directory(self.__prepper.get_game_path())
         self.__check_readiness()
 
+    def __open_game_directory(self):
+        if self.__prepper.get_game_path_validate_result():
+            os.startfile(self.__prepper.get_game_path())
+        else:
+            error = CustomDialog(parent=self, text=self.__prepper.get_game_path())
+            error.show_path_error()
+
     def __select_original_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_original_mode_directory())
@@ -207,6 +219,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__settings.set_last_original_mode_directory(self.__prepper.get_original_mode_path())
         self.__check_readiness()
 
+    def __open_original_directory(self):
+        if self.__prepper.get_original_mode_path_validate_result():
+            os.startfile(self.__prepper.get_original_mode_path())
+        else:
+            error = CustomDialog(parent=self, text=self.__prepper.get_original_mode_path())
+            error.show_path_error()
+
     def __select_previous_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_previous_directory())
@@ -228,6 +247,13 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__settings.set_last_previous_directory(self.__prepper.get_previous_path())
 
+    def __open_previous_directory(self):
+        if self.__prepper.get_previous_path_validate_result():
+            os.startfile(self.__prepper.get_previous_path())
+        else:
+            error = CustomDialog(parent=self, text=self.__prepper.get_previous_path())
+            error.show_path_error()
+
     def __select_target_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_target_directory())
@@ -245,6 +271,13 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__settings.set_last_target_directory(self.__prepper.get_target_path())
         self.__check_readiness()
+
+    def __open_target_directory(self):
+        if self.__prepper.get_target_path_validate_result():
+            os.startfile(self.__prepper.get_target_path())
+        else:
+            error = CustomDialog(parent=self, text=self.__prepper.get_target_path())
+            error.show_path_error()
 
     def __original_language_changed(self):
         if self.__ui.original_directory_lineEdit.text():
@@ -393,11 +426,18 @@ class CustomDialog(QtWidgets.QDialog):
         super(CustomDialog, self).__init__(parent)
         self.__ui = Ui_Dialog()
         self.__ui.setupUi(self)
+        self.__text = text
         if custom_title:
             self.setWindowTitle(custom_title)
         self.setWindowIcon(QtGui.QIcon('icons/error icon.jpg'))
 
         self.__ui.no_path_error_textBrowser.setText(text)
+
+    @logger.catch()
+    def show_path_error(self):
+        error_text = f'{LanguageConstants.error_path_not_exists}: {self.__text}'
+        self.__ui.no_path_error_textBrowser.setText(error_text)
+        self.exec_()
 
 
 if __name__ == '__main__':
