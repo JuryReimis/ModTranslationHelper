@@ -25,7 +25,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
         logger.remove(0)
-        logger.add(sink='logs/debug.log', rotation='5 MB', compression="zip")
+        logger.add(sink='logs/debug.log', rotation='10 MB', compression="zip")
 
         super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
@@ -214,7 +214,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__previous_directory_changed()
 
     def __previous_directory_changed(self):
-        self.__prepper.set_previous_path(previous_path=self.__ui.previous_directory_lineEdit.text())
+        self.__prepper.set_previous_path(previous_path=self.__ui.previous_directory_lineEdit.text(),
+                                         target_language=self.__ui.selector_target_language_comboBox.currentText())
         if not self.__prepper.get_previous_path_validate_result():
             self.__ui.previous_directory_lineEdit.clear()
             if str(self.__prepper.get_previous_path()) != '.':
@@ -222,6 +223,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                      text=f'{self.__prepper.get_previous_path()} - '
                                           f'{LanguageConstants.error_folder_does_not_exist}')
                 error.show()
+            else:
+                self.__settings.set_last_previous_directory(Path(''))
         else:
             self.__settings.set_last_previous_directory(self.__prepper.get_previous_path())
 
