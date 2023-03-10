@@ -9,6 +9,8 @@ from languages.language_constants import LanguageConstants
 
 from loguru import logger
 
+from shielded_values import ShieldedValues
+
 
 class Prepper:
 
@@ -444,7 +446,8 @@ class Performer(QObject):
                 return line
             else:
                 try:
-                    modified_line = self.__modify_line(line=localization_value, flag="modify")
+                    modified_line = self.__modify_line(line=localization_value, flag="modify",
+                                                       pattern=self.__shielded_values)
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
                     if self.__disable_original_line:
@@ -485,11 +488,11 @@ class Performer(QObject):
     def __change_text_style(text: str, flag):
         match flag:
             case 'red':
-                return f'<span style=\" color: red;\">' + text + '</span>'
+                return f'<span style=\" color: red;\">' + text + '<\\span>'
             case 'green':
-                return f'<span style=\" color: green;\">' + text + '</span>'
+                return f'<span style=\" color: green;\">' + text + '<\\span>'
             case 'orange':
-                return f'<span style=\" color: orange;\">' + text + '</span>'
+                return f'<span style=\" color: orange;\">' + text + '<\\span>'
 
     @staticmethod
     @logger.catch()
@@ -511,6 +514,7 @@ class Performer(QObject):
     def __process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self.__calculate_time_delta()}\n')
+        self.__shielded_values = ShieldedValues.get_common_pattern()
         for file in self.__paths.get_file_hierarchy():
             self.__current_process_file = file
             original_file_full_path = self.__paths.get_original_mode_path() / file
