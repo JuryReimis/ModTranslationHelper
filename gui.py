@@ -25,7 +25,6 @@ HOME_DIR = Path.home()
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
-        logger.remove(0)
         logger.add(sink='logs/debug.log', rotation='10 MB', compression="zip")
 
         super(MainWindow, self).__init__(parent=parent)
@@ -412,7 +411,7 @@ class SettingsWindow(QtWidgets.QDialog):
     def __show_warning(self):
         if self.__ui.disable_original_line_checkBox.isChecked():
             window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
-                                  custom_title='Предупреждение')
+                                  custom_title=LanguageConstants.warning_disable_original_line_title)
             window.exec_()
 
     def save_settings(self):
