@@ -15,7 +15,7 @@ from CustomDialog import Ui_Dialog
 from languages.language_constants import LanguageConstants
 from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
-from test_ui.settings import Ui_Settings
+from SettingsWindow import Ui_Settings
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
