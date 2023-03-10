@@ -168,6 +168,7 @@ class MainWindow(QtWidgets.QMainWindow):
             set_translators()
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
+        self.__init_menubar()
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
