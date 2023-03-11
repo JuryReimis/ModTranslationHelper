@@ -359,6 +359,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.run_pushButton.setEnabled(True)
         self.__running_thread.exec_()
 
+    def keyPressEvent(self, button: QtGui.QKeyEvent) -> None:
+        if button.key() == QtCore.Qt.Key_R:
+            self.__ui.run_pushButton.click()
+        else:
+            super(MainWindow, self).keyPressEvent(button)
+
     def __run(self):
         self.__ui.run_pushButton.setEnabled(False)
         self.__settings.set_last_languages(original=self.__ui.selector_original_language_comboBox.currentText(),
