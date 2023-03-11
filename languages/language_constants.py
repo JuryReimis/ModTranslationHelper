@@ -2,6 +2,8 @@ from PyQt5 import QtCore
 
 
 class LanguageConstants:
+    menu = ''
+    settings = ''
     program_version = ''
 
     start_forming_hierarchy = ''
@@ -27,10 +29,16 @@ class LanguageConstants:
     error_settings_file_not_exist = ''
     error_folder_does_not_exist = ''
     error_drive_not_exist = ''
+    error_path_not_exists = ''
+
+    warning_disable_original_line = ''
+    warning_disable_original_line_title = ''
 
     @classmethod
     def retranslate(cls):
         _translate = QtCore.QCoreApplication.translate
+        cls.menu = _translate("Constants", "&Меню")
+        cls.settings = _translate("Constants", "Настройки")
         cls.program_version = _translate("Constants", "Версия")
 
         cls.start_forming_hierarchy = _translate("Constants", "Начато формирование иерархии директорий -")
@@ -56,5 +64,8 @@ class LanguageConstants:
         cls.error_settings_file_not_exist = _translate("Constants", "Место хранения настроек - не найдено")
         cls.error_folder_does_not_exist = _translate("Constants", "Директория не существует")
         cls.error_drive_not_exist = _translate("Constants", "Выбранный диск не существует")
+        cls.error_path_not_exists = _translate("Constants", "Невозможно открыть")
 
+        cls.warning_disable_original_line = _translate("Constants", "Внимание!\nАвтор программы считает, что при включении данной функции сильно пострадает качество перевода. Включайте на свой страх и риск. После работы программы вы получите полностью машинный перевод с огромным количеством ошибок! Проверяйте перевод перед его публикацией где-либо!")
+        cls.warning_disable_original_line_title = _translate("Constants", "Предупреждение")
 
