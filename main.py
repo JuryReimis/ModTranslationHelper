@@ -183,12 +183,14 @@ class Settings:
         'translator_api': "GoogleTranslator",
 
         'app_language': "Русский",
+        'app_size': [1300, 700],
+        'app_position': [100, 50],
     }
 
     @logger.catch()
     def __init__(self, local_data_path: Path | None):
         self.__local_data_path = local_data_path
-        if self.__local_data_path is not None:
+        if self.__local_data_path:
             if self.__local_data_path.exists() and (self.__local_data_path / 'settings.json').exists():
                 with (self.__local_data_path / 'settings.json').open(mode='r', encoding='utf-8-sig') as settings:
                     self.__settings = self.__settings | json.load(settings)
@@ -236,8 +238,17 @@ class Settings:
         self.__settings['last_original_language'] = original
         self.__settings['last_target_language'] = target
 
+    def set_translator_api(self):
+        pass
+
     def set_app_language(self, value):
         self.__settings['app_language'] = value
+
+    def set_app_size(self, width, height):
+        self.__settings['app_size'] = [width, height]
+
+    def set_app_position(self, x, y):
+        self.__settings['app_position'] = [x, y]
 
     def get_last_original_language(self):
         return self.__settings.get('last_original_language', 'english')
@@ -245,11 +256,17 @@ class Settings:
     def get_last_target_language(self):
         return self.__settings.get('last_target_language', 'russian')
 
+    def get_translator_api(self):
+        return self.__settings.get('translator_api', None)
+
     def get_app_language(self):
         return self.__settings.get('app_language', 0)
 
-    def get_translator_api(self):
-        return self.__settings.get('translator_api', None)
+    def get_app_size(self):
+        return self.__settings.get('app_size', None)
+
+    def get_app_position(self) -> [int, int]:
+        return self.__settings.get('app_position', None)
 
     def save_settings_data(self, disable_original_line: bool = None):
         if disable_original_line is not None:
