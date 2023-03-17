@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 from PyQt5.QtCore import pyqtSlot
-from PyQt5.QtGui import QResizeEvent
 from loguru import logger
 
 from CustomDialog import Ui_Dialog
@@ -32,6 +31,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
         self.__init_settings()
+        self.__init_app_position()
         self.__init_languages()
         self.__init_menubar()
         self.__init_languages_dict()
@@ -89,11 +89,22 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init_settings(self):
         if (HOME_DIR / 'Documents').exists():
             local_data_path = (HOME_DIR / 'Documents' / 'ModTranslationHelper')
+            self.__settings = Settings(local_data_path)
         else:
-            local_data_path = None
+            logger.warning(f'{HOME_DIR} / Documents - not exists')
+            local_data_path = BASE_DIR / 'Settings'
+            self.__settings = Settings(local_data_path)
+            self.__init_languages()
             error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist)
             error.show()
-        self.__settings = Settings(local_data_path)
+
+    @logger.catch()
+    def __init_app_position(self):
+        size = self.__settings.get_app_size()
+        ResizeWindow(self.__ui, size[0])
+        self.resize(*size)
+        position = self.__settings.get_app_position()
+        self.move(*position)
 
     @logger.catch()
     def __init_menubar(self):
@@ -368,8 +379,19 @@ class MainWindow(QtWidgets.QMainWindow):
             super(MainWindow, self).keyPressEvent(button)
 
     def resizeEvent(self, resize_event: QtGui.QResizeEvent) -> None:
-        ResizeWindow(self.__ui, resize_event)
+        ResizeWindow(self.__ui, resize_event.size().width())
+        new_size = resize_event.size()
+        self.__settings.set_app_size(new_size.width(), new_size.height())
         super(MainWindow, self).resizeEvent(resize_event)
+
+    def moveEvent(self, a0: QtGui.QMoveEvent) -> None:
+        new_position = a0.pos()
+        self.__settings.set_app_position(new_position.x(), new_position.y())
+        super(MainWindow, self).moveEvent(a0)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self.__settings.save_settings_data()
+        super(MainWindow, self).closeEvent(a0)
 
     ###
 
@@ -416,7 +438,7 @@ class ResizeWindow:
     }
 
     special_font_sizes = {
-        'discord_link__pushButton': 14,
+        'discord_link_pushButton': 14,
         'donate_pushButton': 14,
         'game_directory_info_label': 8,
         'change_program_language_label': 14,
@@ -437,10 +459,9 @@ class ResizeWindow:
     BIG = 1.5
     VERY_BIG = 3
 
-    def __init__(self, ui: Ui_MainWindow, resize_event: QResizeEvent):
+    def __init__(self, ui: Ui_MainWindow, width: int):
         self.ui = ui
-        self.resize_event = resize_event
-        current_width = resize_event.size().width()
+        current_width = width
         if current_width >= 1855:
             self.change_font(self.VERY_BIG)
         elif current_width > 1629:
@@ -449,7 +470,7 @@ class ResizeWindow:
             self.change_font(self.NORMAL)
         elif current_width >= 1259:
             self.change_font(self.LOW)
-        elif current_width >= 946:
+        elif current_width >= 945:
             self.change_font(self.VERY_LOW)
 
     def change_font(self, rate):
