@@ -488,13 +488,13 @@ class Performer(QObject):
                 logger.debug(f'Found params for modify - {regular_groups}')
                 if regular_groups:
                     for step in regular_groups:
-                        self.__modified_values[f"[{shadow_number}]"] = step
-                        line = line.replace(step, f"[{shadow_number}]")
+                        self.__modified_values[shadow_number] = step
+                        line = line.replace(step, f"PROTARG_{shadow_number}")
                         shadow_number += 1
                 return line
             case "return_normal_view":
                 for key, value in self.__modified_values.items():
-                    line = line.replace(key, value)
+                    line = line.replace(f'PROTARG_{key}', value)
                 return line
             case _:
                 self.info_console_value(LanguageConstants.error_with_modification)
@@ -505,11 +505,11 @@ class Performer(QObject):
     def __change_text_style(text: str, flag):
         match flag:
             case 'red':
-                return f'<span style=\" color: red;\">' + text + '<\\span>'
+                return f'<span style=\" color: red;\">' + text + '</span>'
             case 'green':
-                return f'<span style=\" color: green;\">' + text + '<\\span>'
+                return f'<span style=\" color: green;\">' + text + '</span>'
             case 'orange':
-                return f'<span style=\" color: orange;\">' + text + '<\\span>'
+                return f'<span style=\" color: orange;\">' + text + '</span>'
 
     @staticmethod
     @logger.catch()
@@ -533,6 +533,7 @@ class Performer(QObject):
         self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self.__calculate_time_delta()}\n')
         self.__shielded_values = ShieldedValues.get_common_pattern()
         for file in self.__paths.get_file_hierarchy():
+            logger.info(f'Started file {file}')
             self.__current_process_file = file
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
