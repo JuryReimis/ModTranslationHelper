@@ -43,7 +43,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init_languages()
         self.__init_menubar()
         self.__init_languages_dict()
-        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
 
@@ -108,11 +107,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @logger.catch()
     def __init_app_position(self):
-        size = self.__settings.get_app_size()
-        ResizeWindow(self.__ui, size[0])
-        self.resize(*size)
         position = self.__settings.get_app_position()
         self.move(*position)
+        size = self.__settings.get_app_size()
+        ResizeWindow(self, QtCore.QSize(*size)).resize_window()
 
     @logger.catch()
     def __init_menubar(self):
@@ -186,6 +184,7 @@ class MainWindow(QtWidgets.QMainWindow):
             set_translators()
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
+        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
         self.__init_menubar()
 
     def __select_game_directory(self):
@@ -387,7 +386,7 @@ class MainWindow(QtWidgets.QMainWindow):
             super(MainWindow, self).keyPressEvent(button)
 
     def resizeEvent(self, resize_event: QtGui.QResizeEvent) -> None:
-        ResizeWindow(self.__ui, resize_event.size().width())
+        ResizeWindow(self, resize_event.size())
         new_size = resize_event.size()
         self.__settings.set_app_size(new_size.width(), new_size.height())
         super(MainWindow, self).resizeEvent(resize_event)
@@ -461,30 +460,47 @@ class ResizeWindow:
 
     # RATES:
 
-    VERY_LOW = -3
-    LOW = -1.5
+    EXTRA_SMALL = -4.5
+    VERY_SMALL = -3
+    SMALL = -1.5
     NORMAL = 0
     BIG = 1.5
     VERY_BIG = 3
 
-    def __init__(self, ui: Ui_MainWindow, width: int):
-        self.ui = ui
-        current_width = width
-        if current_width >= 1855:
+    def __init__(self, main_window: MainWindow, size: QtCore.QSize):
+        self.main_window = main_window
+        self.new_width = size.width()
+        self.new_height = size.height()
+
+        self._validate_screen_size()
+
+        if self.new_width >= 1900:
             self.change_font(self.VERY_BIG)
-        elif current_width > 1629:
+        elif self.new_width > 1700:
             self.change_font(self.BIG)
-        elif current_width >= 1436:
+        elif self.new_width >= 1500:
             self.change_font(self.NORMAL)
-        elif current_width >= 1259:
-            self.change_font(self.LOW)
-        elif current_width >= 945:
-            self.change_font(self.VERY_LOW)
+        elif self.new_width >= 1300:
+            self.change_font(self.SMALL)
+        elif self.new_width >= 1000:
+            self.change_font(self.VERY_SMALL)
+        else:
+            self.change_font(self.EXTRA_SMALL)
+
+    def _validate_screen_size(self):
+        if self.new_width > SCREEN_SIZE.width() or self.new_height > SCREEN_SIZE.height():
+            if self.new_width > SCREEN_SIZE.width():
+                self.new_width = SCREEN_SIZE.width() * 0.7
+            if self.new_height > SCREEN_SIZE.height():
+                self.new_height = SCREEN_SIZE.height() * 0.7
+            self.main_window.move(0, 0)
+            self.main_window.resize(int(self.new_width), int(self.new_height))
 
     def change_font(self, rate):
 
         for name, size in self.default_font_sizes.items():
-            for widget in self.ui.centralwidget.findChildren(name):
+            for widget in self.main_window.findChildren(name):
+                widget: QtWidgets.QWidget
                 special_size = self.special_font_sizes.get(widget.objectName())
                 if special_size:
                     font = widget.font()
@@ -494,6 +510,10 @@ class ResizeWindow:
                     font = widget.font()
                     font.setPointSizeF(size + rate)
                     widget.setFont(font)
+
+    def resize_window(self):
+        if self.new_width and self.new_height:
+            self.main_window.resize(int(self.new_width), int(self.new_height))
 
 
 class SettingsWindow(QtWidgets.QDialog):
@@ -548,6 +568,7 @@ class CustomDialog(QtWidgets.QDialog):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
+    SCREEN_SIZE = app.primaryScreen().size()
     application = MainWindow()
     application.show()
 
