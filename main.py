@@ -268,9 +268,7 @@ class Settings:
     def get_app_position(self) -> [int, int]:
         return self.__settings.get('app_position', None)
 
-    def save_settings_data(self, disable_original_line: bool = None):
-        if disable_original_line is not None:
-            self.disable_original_line = disable_original_line
+    def save_settings_data(self):
         if self.__local_data_path is not None:
             with (self.__local_data_path / 'settings.json').open(mode='w', encoding='utf-8-sig') as settings:
                 json.dump(self.__settings, settings, indent=4)
