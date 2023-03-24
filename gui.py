@@ -76,6 +76,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
         self.__ui.program_language_comboBox.currentTextChanged.connect(self.__change_language)
 
+        self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
+
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
 
@@ -330,6 +332,12 @@ class MainWindow(QtWidgets.QMainWindow):
         vertical_layout_widget.setLayout(vertical_layout)
         self.__ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
 
+    def __show_warning(self):
+        if self.__ui.disable_original_line_checkBox.isChecked():
+            window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
+                                  custom_title=LanguageConstants.warning_disable_original_line_title)
+            window.exec_()
+
     def __check_all_checkboxes(self):
         for checkbox in self.__ui.need_translate_scrollArea.widget().children():
             if isinstance(checkbox, QtWidgets.QCheckBox):
@@ -416,7 +424,7 @@ class MainWindow(QtWidgets.QMainWindow):
             languages_dict=self.__languages_dict.get(self.__settings.get_translator_api()),
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes(),
-            disable_original_line=self.__settings.disable_original_line,
+            disable_original_line=self.__ui.disable_original_line_checkBox.isChecked(),
         )
 
         self.__running_thread = QtCore.QThread()
@@ -529,22 +537,14 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__settings = settings
         self.__set_initial_values()
 
-        self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
 
     @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
-        self.__ui.disable_original_line_checkBox.setChecked(False)
-
-    def __show_warning(self):
-        if self.__ui.disable_original_line_checkBox.isChecked():
-            window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
-                                  custom_title=LanguageConstants.warning_disable_original_line_title)
-            window.exec_()
 
     def save_settings(self):
-        self.__settings.save_settings_data(disable_original_line=self.__ui.disable_original_line_checkBox.isChecked())
+        self.__settings.save_settings_data()
         self.close()
 
 
