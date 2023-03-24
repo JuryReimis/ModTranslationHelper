@@ -16,6 +16,7 @@ from languages.language_constants import LanguageConstants
 from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
 from SettingsWindow import Ui_Settings
+import ctypes
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
@@ -472,17 +473,19 @@ class ResizeWindow:
         self.new_width = size.width()
         self.new_height = size.height()
 
+        self.scale_factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+
         self._validate_screen_size()
 
-        if self.new_width >= 1900:
+        if self.new_width >= 1900 * self.scale_factor:
             self.change_font(self.VERY_BIG)
-        elif self.new_width > 1700:
+        elif self.new_width > 1700 * self.scale_factor:
             self.change_font(self.BIG)
-        elif self.new_width >= 1500:
+        elif self.new_width >= 1500 * self.scale_factor:
             self.change_font(self.NORMAL)
-        elif self.new_width >= 1300:
+        elif self.new_width >= 1300 * self.scale_factor:
             self.change_font(self.SMALL)
-        elif self.new_width >= 1000:
+        elif self.new_width >= 1000 * self.scale_factor:
             self.change_font(self.VERY_SMALL)
         else:
             self.change_font(self.EXTRA_SMALL)
