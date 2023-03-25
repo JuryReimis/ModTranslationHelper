@@ -8,7 +8,8 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QSize
+from PyQt5.QtWidgets import QLabel
 from loguru import logger
 
 from CustomDialog import Ui_Dialog
@@ -17,6 +18,7 @@ from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
 from SettingsWindow import Ui_Settings
 import ctypes
+import qtawesome as qta
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
@@ -188,7 +190,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
         self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
+        self.__init_help_icons()
         self.__init_menubar()
+
+    def __init_info_layouts(self):
+        layouts = {
+            self.__ui.game_directory_horizontalLayout: LanguageConstants.game_directory_help,
+            self.__ui.original_directory_horizontalLayout: LanguageConstants.original_directory_help,
+            self.__ui.previous_directory_horizontalLayout: LanguageConstants.previous_directory_help,
+            self.__ui.target_directory_horizontalLayout: LanguageConstants.target_directory_help,
+            self.__ui.need_translation_horizontalLayout: LanguageConstants.need_translation_help,
+            self.__ui.disable_original_line_horizontalLayout: LanguageConstants.disable_original_line_help,
+        }
+        self.info_layouts = layouts
+
+    def __init_help_icons(self):
+        self.__init_info_layouts()
+        AddInfoIcons(self.info_layouts)
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -440,6 +458,33 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.started.connect(self.__performer.run)
 
         self.__running_thread.start()
+
+
+class AddInfoIcons:
+
+    stylesheet = "QToolTip { color: #29ab87;" \
+                 " font-size: 18px;" \
+                 " font-weight: bold; }"
+
+    def __init__(self, layouts: dict):
+        for layout, text in layouts.items():
+            layout: QtWidgets.QHBoxLayout
+            info_icon = layout.itemAt(1)
+            if not info_icon:
+                info_icon = self.get_icon()
+                info_icon.setToolTip(text)
+                info_icon.setStyleSheet(self.stylesheet)
+                layout.addWidget(info_icon)
+
+            else:
+                info_icon.widget().setStyleSheet(self.stylesheet)
+                info_icon.widget().setToolTip(text)
+
+    @staticmethod
+    def get_icon():
+        icon = QLabel()
+        icon.setPixmap(qta.icon('fa5.question-circle').pixmap(QSize(16, 16)))
+        return icon
 
 
 class ResizeWindow:
