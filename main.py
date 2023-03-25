@@ -420,6 +420,8 @@ class Performer(QObject):
     @logger.catch()
     def __compare_with_previous(self, key_value) -> str:
         previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
+        if not previous_line.strip():
+            previous_line = None
         logger.debug(f'Key - Value: {key_value}')
         if previous_line is None:
             logger.debug(f'Is {previous_line}')
@@ -456,7 +458,7 @@ class Performer(QObject):
             return line + " #NT!"
         else:
             localization_value = self.__get_localization_value(line=line)
-            logger.debug(f'Only text - {localization_value}')
+            logger.debug(f'Only text from line {line} - {localization_value}')
             if localization_value is None:
                 return line
             else:
@@ -520,7 +522,7 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __get_localization_value(pattern: str = r'(\".*\D+?.*\")', line: str = ''):
+    def __get_localization_value(pattern: str = r'(\".*\pL+?.*\")', line: str = ''):
         value = re.findall(pattern=pattern, string=line)
         if value:
             return value[0]
