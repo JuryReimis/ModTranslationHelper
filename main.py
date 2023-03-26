@@ -522,7 +522,7 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __get_localization_value(pattern: str = r'(\".*\pL+?.*\")', line: str = ''):
+    def __get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = ''):
         value = re.findall(pattern=pattern, string=line)
         if value:
             return value[0]
