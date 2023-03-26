@@ -8,7 +8,8 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QSize
+from PyQt5.QtWidgets import QLabel
 from loguru import logger
 
 from CustomDialog import Ui_Dialog
@@ -16,10 +17,20 @@ from languages.language_constants import LanguageConstants
 from main import Prepper, Performer, Settings
 from MainWindow import Ui_MainWindow
 from SettingsWindow import Ui_Settings
+import ctypes
+import qtawesome as qta
 
 BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
 HOME_DIR = Path.home()
+
+PROGRAM_VERSION = '1.3.0'
+
+if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
+
+if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
+    QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -31,11 +42,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui = Ui_MainWindow()
         self.__ui.setupUi(self)
         self.__init_settings()
+        self.__init_app_position()
         self.__init_languages()
         self.__init_menubar()
         self.__init_languages_dict()
-        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} 1.2.1')
-        MainWindow.setFixedSize(self, self.size())
         self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
         self.__running_thread = None
 
@@ -59,14 +69,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.check_all_pushButton.clicked.connect(self.__check_all_checkboxes)
         self.__ui.uncheck_all_pushButton.clicked.connect(self.__unchecked_all_checkboxes)
         self.__ui.run_pushButton.clicked.connect(self.__run)
-        self.__ui.discord_link__pushButton.clicked.connect(self.__discord_clicked)
+        self.__ui.discord_link_pushButton.clicked.connect(self.__discord_clicked)
         self.__ui.donate_pushButton.clicked.connect(self.__donate_clicked)
         self.__ui.game_directory_lineEdit.editingFinished.connect(self.__game_directory_changed)
         self.__ui.original_directory_lineEdit.editingFinished.connect(self.__original_directory_changed)
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
-        self.__ui.translation_comboBox.currentTextChanged.connect(self.__change_language)
+        self.__ui.program_language_comboBox.currentTextChanged.connect(self.__change_language)
+
+        self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
 
         self.__prepper = Prepper()
         self.__performer: Performer | None = None
@@ -81,26 +93,36 @@ class MainWindow(QtWidgets.QMainWindow):
         for directory in TRANSLATIONS_DIR.iterdir():
             if directory.is_dir() and directory.name != "__pycache__":
                 languages_list.append(directory.name)
-        self.__ui.translation_comboBox.addItems(languages_list)
-        self.__ui.translation_comboBox.setCurrentText(self.__settings.get_app_language())
+        self.__ui.program_language_comboBox.addItems(languages_list)
+        self.__ui.program_language_comboBox.setCurrentText(self.__settings.get_app_language())
         self.__change_language()
 
     @logger.catch()
     def __init_settings(self):
         if (HOME_DIR / 'Documents').exists():
             local_data_path = (HOME_DIR / 'Documents' / 'ModTranslationHelper')
+            self.__settings = Settings(local_data_path)
         else:
-            local_data_path = None
+            logger.warning(f'{HOME_DIR} / Documents - not exists')
+            local_data_path = BASE_DIR / 'Settings'
+            self.__settings = Settings(local_data_path)
+            self.__init_languages()
             error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist)
             error.show()
-        self.__settings = Settings(local_data_path)
+
+    @logger.catch()
+    def __init_app_position(self):
+        position = self.__settings.get_app_position()
+        self.move(*position)
+        size = self.__settings.get_app_size()
+        ResizeWindow(self, QtCore.QSize(*size)).resize_window()
 
     @logger.catch()
     def __init_menubar(self):
         def open_settings():
             settings = SettingsWindow(parent=self, settings=self.__settings)
             settings.exec_()
-            self.__ui.translation_comboBox.setCurrentText(self.__settings.get_app_language())
+            self.__ui.program_language_comboBox.setCurrentText(self.__settings.get_app_language())
             self.__change_language()
 
         menu = QtWidgets.QMenuBar()
@@ -151,11 +173,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 app.removeTranslator(_translator)
 
         del_translators()
-        self.__settings.set_app_language(self.__ui.translation_comboBox.currentText())
+        self.__settings.set_app_language(self.__ui.program_language_comboBox.currentText())
 
         self.__translators.clear()
-        if self.__ui.translation_comboBox.currentText() != 'Русский':
-            current_language = self.__ui.translation_comboBox.currentText()
+        if self.__ui.program_language_comboBox.currentText() != 'Русский':
+            current_language = self.__ui.program_language_comboBox.currentText()
             translation_files = [TRANSLATIONS_DIR / current_language / file for file in
                                  (TRANSLATIONS_DIR / current_language).iterdir() if
                                  (TRANSLATIONS_DIR / current_language).exists() and file.is_file()]
@@ -167,7 +189,24 @@ class MainWindow(QtWidgets.QMainWindow):
             set_translators()
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
+        self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
+        self.__init_help_icons()
         self.__init_menubar()
+
+    def __init_info_layouts(self):
+        layouts = {
+            self.__ui.game_directory_horizontalLayout: LanguageConstants.game_directory_help,
+            self.__ui.original_directory_horizontalLayout: LanguageConstants.original_directory_help,
+            self.__ui.previous_directory_horizontalLayout: LanguageConstants.previous_directory_help,
+            self.__ui.target_directory_horizontalLayout: LanguageConstants.target_directory_help,
+            self.__ui.need_translation_horizontalLayout: LanguageConstants.need_translation_help,
+            self.__ui.disable_original_line_horizontalLayout: LanguageConstants.disable_original_line_help,
+        }
+        self.info_layouts = layouts
+
+    def __init_help_icons(self):
+        self.__init_info_layouts()
+        AddInfoIcons(self.info_layouts)
 
     def __select_game_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
@@ -311,6 +350,12 @@ class MainWindow(QtWidgets.QMainWindow):
         vertical_layout_widget.setLayout(vertical_layout)
         self.__ui.need_translate_scrollArea.setWidget(vertical_layout_widget)
 
+    def __show_warning(self):
+        if self.__ui.disable_original_line_checkBox.isChecked():
+            window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
+                                  custom_title=LanguageConstants.warning_disable_original_line_title)
+            window.exec_()
+
     def __check_all_checkboxes(self):
         for checkbox in self.__ui.need_translate_scrollArea.widget().children():
             if isinstance(checkbox, QtWidgets.QCheckBox):
@@ -359,11 +404,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.run_pushButton.setEnabled(True)
         self.__running_thread.exec_()
 
+    # Events:
+
     def keyPressEvent(self, button: QtGui.QKeyEvent) -> None:
         if button.key() == QtCore.Qt.Key_R:
             self.__ui.run_pushButton.click()
         else:
             super(MainWindow, self).keyPressEvent(button)
+
+    def resizeEvent(self, resize_event: QtGui.QResizeEvent) -> None:
+        ResizeWindow(self, resize_event.size())
+        new_size = resize_event.size()
+        self.__settings.set_app_size(new_size.width(), new_size.height())
+        super(MainWindow, self).resizeEvent(resize_event)
+
+    def moveEvent(self, a0: QtGui.QMoveEvent) -> None:
+        new_position = a0.pos()
+        self.__settings.set_app_position(new_position.x(), new_position.y())
+        super(MainWindow, self).moveEvent(a0)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self.__settings.save_settings_data()
+        super(MainWindow, self).closeEvent(a0)
+
+    ###
 
     def __run(self):
         self.__ui.run_pushButton.setEnabled(False)
@@ -378,7 +442,7 @@ class MainWindow(QtWidgets.QMainWindow):
             languages_dict=self.__languages_dict.get(self.__settings.get_translator_api()),
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes(),
-            disable_original_line=self.__settings.disable_original_line,
+            disable_original_line=self.__ui.disable_original_line_checkBox.isChecked(),
         )
 
         self.__running_thread = QtCore.QThread()
@@ -396,6 +460,118 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.start()
 
 
+class AddInfoIcons:
+
+    stylesheet = "QToolTip { color: #29ab87;" \
+                 " font-size: 18px;" \
+                 " font-weight: bold; }"
+
+    def __init__(self, layouts: dict):
+        for layout, text in layouts.items():
+            layout: QtWidgets.QHBoxLayout
+            info_icon = layout.itemAt(1)
+            if not info_icon:
+                info_icon = self.get_icon()
+                info_icon.setToolTip(text)
+                info_icon.setStyleSheet(self.stylesheet)
+                layout.addWidget(info_icon)
+
+            else:
+                info_icon.widget().setStyleSheet(self.stylesheet)
+                info_icon.widget().setToolTip(text)
+
+    @staticmethod
+    def get_icon():
+        icon = QLabel()
+        icon.setPixmap(qta.icon('fa5.question-circle').pixmap(QSize(16, 16)))
+        return icon
+
+
+class ResizeWindow:
+    default_font_sizes = {
+        QtWidgets.QPushButton: 8,
+        QtWidgets.QCheckBox: 10,
+        QtWidgets.QProgressBar: 10,
+        QtWidgets.QLabel: 10,
+        QtWidgets.QTextBrowser: 8,
+        QtWidgets.QLineEdit: 10,
+        QtWidgets.QComboBox: 8,
+    }
+
+    special_font_sizes = {
+        'discord_link_pushButton': 14,
+        'donate_pushButton': 14,
+        'game_directory_info_label': 8,
+        'change_program_language_label': 14,
+        'need_translation_info_label': 8,
+        'need_translation_info_label_2': 8,
+        'original_directory_info_label': 8,
+        'previous_directory_info_label': 8,
+        'program_version_label': 12,
+        'target_directory_info_label': 8,
+
+    }
+
+    # RATES:
+
+    EXTRA_SMALL = -4.5
+    VERY_SMALL = -3
+    SMALL = -1.5
+    NORMAL = 0
+    BIG = 1.5
+    VERY_BIG = 3
+
+    def __init__(self, main_window: MainWindow, size: QtCore.QSize):
+        self.main_window = main_window
+        self.new_width = size.width()
+        self.new_height = size.height()
+
+        self.scale_factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+
+        self._validate_screen_size()
+
+        if self.new_width >= 1900 * self.scale_factor:
+            self.change_font(self.VERY_BIG)
+        elif self.new_width > 1700 * self.scale_factor:
+            self.change_font(self.BIG)
+        elif self.new_width >= 1500 * self.scale_factor:
+            self.change_font(self.NORMAL)
+        elif self.new_width >= 1300 * self.scale_factor:
+            self.change_font(self.SMALL)
+        elif self.new_width >= 1000 * self.scale_factor:
+            self.change_font(self.VERY_SMALL)
+        else:
+            self.change_font(self.EXTRA_SMALL)
+
+    def _validate_screen_size(self):
+        if self.new_width > SCREEN_SIZE.width() or self.new_height > SCREEN_SIZE.height():
+            if self.new_width > SCREEN_SIZE.width():
+                self.new_width = SCREEN_SIZE.width() * 0.7
+            if self.new_height > SCREEN_SIZE.height():
+                self.new_height = SCREEN_SIZE.height() * 0.7
+            self.main_window.move(0, 0)
+            self.main_window.resize(int(self.new_width), int(self.new_height))
+
+    def change_font(self, rate):
+
+        for name, size in self.default_font_sizes.items():
+            for widget in self.main_window.findChildren(name):
+                widget: QtWidgets.QWidget
+                special_size = self.special_font_sizes.get(widget.objectName())
+                if special_size:
+                    font = widget.font()
+                    font.setPointSizeF(special_size + rate)
+                    widget.setFont(font)
+                else:
+                    font = widget.font()
+                    font.setPointSizeF(size + rate)
+                    widget.setFont(font)
+
+    def resize_window(self):
+        if self.new_width and self.new_height:
+            self.main_window.resize(int(self.new_width), int(self.new_height))
+
+
 class SettingsWindow(QtWidgets.QDialog):
     @logger.catch()
     def __init__(self, parent=None, settings: Settings = None):
@@ -406,22 +582,14 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__settings = settings
         self.__set_initial_values()
 
-        self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
 
     @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
-        self.__ui.disable_original_line_checkBox.setChecked(False)
-
-    def __show_warning(self):
-        if self.__ui.disable_original_line_checkBox.isChecked():
-            window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
-                                  custom_title=LanguageConstants.warning_disable_original_line_title)
-            window.exec_()
 
     def save_settings(self):
-        self.__settings.save_settings_data(disable_original_line=self.__ui.disable_original_line_checkBox.isChecked())
+        self.__settings.save_settings_data()
         self.close()
 
 
@@ -448,6 +616,7 @@ class CustomDialog(QtWidgets.QDialog):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
+    SCREEN_SIZE = app.primaryScreen().size()
     application = MainWindow()
     application.show()
 

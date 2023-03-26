@@ -183,12 +183,14 @@ class Settings:
         'translator_api': "GoogleTranslator",
 
         'app_language': "Русский",
+        'app_size': [1300, 700],
+        'app_position': [100, 50],
     }
 
     @logger.catch()
     def __init__(self, local_data_path: Path | None):
         self.__local_data_path = local_data_path
-        if self.__local_data_path is not None:
+        if self.__local_data_path:
             if self.__local_data_path.exists() and (self.__local_data_path / 'settings.json').exists():
                 with (self.__local_data_path / 'settings.json').open(mode='r', encoding='utf-8-sig') as settings:
                     self.__settings = self.__settings | json.load(settings)
@@ -236,8 +238,17 @@ class Settings:
         self.__settings['last_original_language'] = original
         self.__settings['last_target_language'] = target
 
+    def set_translator_api(self):
+        pass
+
     def set_app_language(self, value):
         self.__settings['app_language'] = value
+
+    def set_app_size(self, width, height):
+        self.__settings['app_size'] = [width, height]
+
+    def set_app_position(self, x, y):
+        self.__settings['app_position'] = [x, y]
 
     def get_last_original_language(self):
         return self.__settings.get('last_original_language', 'english')
@@ -245,15 +256,19 @@ class Settings:
     def get_last_target_language(self):
         return self.__settings.get('last_target_language', 'russian')
 
-    def get_app_language(self):
-        return self.__settings.get('app_language', 0)
-
     def get_translator_api(self):
         return self.__settings.get('translator_api', None)
 
-    def save_settings_data(self, disable_original_line: bool = None):
-        if disable_original_line is not None:
-            self.disable_original_line = disable_original_line
+    def get_app_language(self):
+        return self.__settings.get('app_language', 0)
+
+    def get_app_size(self):
+        return self.__settings.get('app_size', None)
+
+    def get_app_position(self) -> [int, int]:
+        return self.__settings.get('app_position', None)
+
+    def save_settings_data(self):
         if self.__local_data_path is not None:
             with (self.__local_data_path / 'settings.json').open(mode='w', encoding='utf-8-sig') as settings:
                 json.dump(self.__settings, settings, indent=4)
@@ -405,6 +420,8 @@ class Performer(QObject):
     @logger.catch()
     def __compare_with_previous(self, key_value) -> str:
         previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
+        if not previous_line.strip():
+            previous_line = None
         logger.debug(f'Key - Value: {key_value}')
         if previous_line is None:
             logger.debug(f'Is {previous_line}')
@@ -441,7 +458,7 @@ class Performer(QObject):
             return line + " #NT!"
         else:
             localization_value = self.__get_localization_value(line=line)
-            logger.debug(f'Only text - {localization_value}')
+            logger.debug(f'Only text from line {line} - {localization_value}')
             if localization_value is None:
                 return line
             else:
@@ -471,13 +488,13 @@ class Performer(QObject):
                 logger.debug(f'Found params for modify - {regular_groups}')
                 if regular_groups:
                     for step in regular_groups:
-                        self.__modified_values[f"[{shadow_number}]"] = step
-                        line = line.replace(step, f"[{shadow_number}]")
+                        self.__modified_values[shadow_number] = step
+                        line = line.replace(step, f"PROTARG_{shadow_number}")
                         shadow_number += 1
                 return line
             case "return_normal_view":
                 for key, value in self.__modified_values.items():
-                    line = line.replace(key, value)
+                    line = line.replace(f'PROTARG_{key}', value)
                 return line
             case _:
                 self.info_console_value(LanguageConstants.error_with_modification)
@@ -488,11 +505,11 @@ class Performer(QObject):
     def __change_text_style(text: str, flag):
         match flag:
             case 'red':
-                return f'<span style=\" color: red;\">' + text + '<\\span>'
+                return f'<span style=\" color: red;\">' + text + '</span>'
             case 'green':
-                return f'<span style=\" color: green;\">' + text + '<\\span>'
+                return f'<span style=\" color: green;\">' + text + '</span>'
             case 'orange':
-                return f'<span style=\" color: orange;\">' + text + '<\\span>'
+                return f'<span style=\" color: orange;\">' + text + '</span>'
 
     @staticmethod
     @logger.catch()
@@ -505,7 +522,7 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __get_localization_value(pattern: str = r'(\".*\D+?.*\")', line: str = ''):
+    def __get_localization_value(pattern: str = r'(\".*\pL+?.*\")', line: str = ''):
         value = re.findall(pattern=pattern, string=line)
         if value:
             return value[0]
@@ -516,6 +533,7 @@ class Performer(QObject):
         self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self.__calculate_time_delta()}\n')
         self.__shielded_values = ShieldedValues.get_common_pattern()
         for file in self.__paths.get_file_hierarchy():
+            logger.info(f'Started file {file}')
             self.__current_process_file = file
             original_file_full_path = self.__paths.get_original_mode_path() / file
             changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,

@@ -6,6 +6,13 @@ class LanguageConstants:
     settings = ''
     program_version = ''
 
+    game_directory_help = ''
+    original_directory_help = ''
+    previous_directory_help = ''
+    target_directory_help = ''
+    need_translation_help = ''
+    disable_original_line_help = ''
+
     start_forming_hierarchy = ''
     start_file_processing = ''
     file_opened = ''
@@ -41,6 +48,22 @@ class LanguageConstants:
         cls.settings = _translate("Constants", "Настройки")
         cls.program_version = _translate("Constants", "Версия")
 
+        cls.game_directory_help = _translate("Constants",
+                                             "Место, где установлена игра, для которой вы собираетесь переводить. Путь должен вести к папке с локализацией (там где находятся папки english, russian, french и т.д.) Стандартный путь для Crusader Kings 3: \n../Steam/steamapps/common/Crusader Kings III/game/localization")
+        cls.original_directory_help = _translate("Constants",
+                                                 "Папка, где хранится локализация мода, на который вы хотите создать перевод. Пример: ../Steam/steamapps/workshop/content/1158310/2507209632/localization")
+        cls.previous_directory_help = _translate("Constants",
+                                                 "Если происходит обновление перевода и у вас уже есть готовый перевод предыдущей версии, то стоит указать директорию с предыдущей версией перевода.Программа сама пробежится\n"
+                                                 "по старым файлам и использует строки, которые там найдет для построения новой версии. При этом все новые строки будут обработаны в обычном режиме и помечены комментарием #NT!")
+        cls.target_directory_help = _translate("Constants",
+                                               "Папка, в которую будут помещены все файлы, созданные в результате работы программы.\n"
+                                               "(Точная копия оригинальной локализации по структуре папок и файлов, но с заменой данных о языке и с машинным переводом(если отмечен ниже).\n"
+                                               "Пример: Если выбран english, как исходный язык, а russian, как целевой, все l_english будут заменены на l_russian, а машинный перевод будет на русский язык)")
+        cls.need_translation_help = _translate("Constants", "При включении данной функции будет совершена попытка перевести все строки локализации на целевой язык, при этом перевод будет записан рядом с оригинальной строкой,\n"
+                                                            "что подразумевает последующие правки текста, который может быть далек по смыслу от оригинала из-за неточности машинного перевода")
+        cls.disable_original_line_help = _translate("Constants", "Отключает вывод оригинальной строки, оставляет только машинный перевод.\n"
+                                                                 "Включать, только если вы отдаете себе отчет о последствиях!")
+
         cls.start_forming_hierarchy = _translate("Constants", "Начато формирование иерархии директорий -")
         cls.start_file_processing = _translate("Constants", "Начата обработка файлов")
         cls.file_opened = _translate("Constants", "Начата работа с файлом")
@@ -55,7 +78,8 @@ class LanguageConstants:
         cls.localization_dict_creating_started = _translate("Constants", "Начато создание словаря игровой локализации")
         cls.game_localization_processing = _translate("Constants", "Обработка игровой локализации")
         cls.of_file = _translate("Constants", "файла")
-        cls.previous_localization_dict_creating_started = _translate("Constants", "Начато создание словаря предыдущей локализации")
+        cls.previous_localization_dict_creating_started = _translate("Constants",
+                                                                     "Начато создание словаря предыдущей локализации")
         cls.previous_localization_processing = _translate("Constants", "Обработка предыдущей локализации")
         cls.process_string = _translate("Constants", "Обработка строки")
         cls.final = _translate("Constants", "Обработка данных закончена")
@@ -66,6 +90,6 @@ class LanguageConstants:
         cls.error_drive_not_exist = _translate("Constants", "Выбранный диск не существует")
         cls.error_path_not_exists = _translate("Constants", "Невозможно открыть")
 
-        cls.warning_disable_original_line = _translate("Constants", "Внимание!\nАвтор программы считает, что при включении данной функции сильно пострадает качество перевода. Включайте на свой страх и риск. После работы программы вы получите полностью машинный перевод с огромным количеством ошибок! Проверяйте перевод перед его публикацией где-либо!")
+        cls.warning_disable_original_line = _translate("Constants",
+                                                       "Внимание!\nАвтор программы считает, что при включении данной функции сильно пострадает качество перевода. Включайте на свой страх и риск. После работы программы вы получите полностью машинный перевод с огромным количеством ошибок! Проверяйте перевод перед его публикацией где-либо!")
         cls.warning_disable_original_line_title = _translate("Constants", "Предупреждение")
-
