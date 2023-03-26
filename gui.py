@@ -24,7 +24,7 @@ BASE_DIR = Path.cwd()
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
 HOME_DIR = Path.home()
 
-PROGRAM_VERSION = '1.3.0_beta'
+PROGRAM_VERSION = '1.3.0'
 
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
