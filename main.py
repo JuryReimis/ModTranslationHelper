@@ -274,7 +274,7 @@ class Settings:
                 json.dump(self.__settings, settings, indent=4)
 
 
-class Performer(QObject):
+class BasePerformer(QObject):
     info_console_value = pyqtSignal(str)
     info_label_value = pyqtSignal(str)
     progress_bar_value = pyqtSignal(float)
@@ -291,7 +291,7 @@ class Performer(QObject):
             need_translate_tuple: tuple | None = None,
             disable_original_line: bool = False
     ):
-        super(Performer, self).__init__()
+        super(BasePerformer, self).__init__()
         self.__paths = paths
         self.__original_language = languages_dict.get(original_language, None)
         self.__target_language = languages_dict.get(target_language, None)
@@ -310,16 +310,16 @@ class Performer(QObject):
         self.__translated_list = []
 
     @logger.catch()
-    def __calculate_time_delta(self) -> str:
+    def _calculate_time_delta(self) -> str:
         start_time = self.__start_running_time
         current_time = time.time()
         delta = current_time - start_time
         return time.strftime('%H:%M:%S', time.gmtime(delta))
 
     @logger.catch()
-    def __create_directory_hierarchy(self):
-        info = f"{LanguageConstants.start_forming_hierarchy} {self.__calculate_time_delta()}\n"
-        self.info_console_value.emit(self.__change_text_style(info, 'green'))
+    def _create_directory_hierarchy(self):
+        info = f"{LanguageConstants.start_forming_hierarchy} {self._calculate_time_delta()}\n"
+        self.info_console_value.emit(self._change_text_style(info, 'green'))
         self.info_label_value.emit(LanguageConstants.forming_process)
         logger.debug(f'{info}')
         if not self.__paths.get_target_path().exists():
@@ -333,17 +333,17 @@ class Performer(QObject):
             try:
                 if not (self.__paths.get_target_path() / directory).exists():
                     (self.__paths.get_target_path() / directory).mkdir(parents=True)
-                    info = f"{LanguageConstants.folder_created} {directory} - {self.__calculate_time_delta()}\n"
+                    info = f"{LanguageConstants.folder_created} {directory} - {self._calculate_time_delta()}\n"
                     self.info_console_value.emit(info)
             except Exception as error:
                 error_text = f"{LanguageConstants.error_with_folder_creating} {directory}:" \
                              f"{error}"
-                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
-                self.info_label_value.emit(self.__change_text_style(f'{LanguageConstants.thread_stopped}', 'red'))
+                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+                self.info_label_value.emit(self._change_text_style(f'{LanguageConstants.thread_stopped}', 'red'))
                 self.finish_thread.emit()
 
     @logger.catch()
-    def __create_original_language_dictionary(self):
+    def _create_original_language_dictionary(self):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
         Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
         К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
@@ -353,7 +353,7 @@ class Performer(QObject):
         self.__original_language_dictionary = {}
         num_str = 0
         for line in self.__current_original_lines:
-            key = self.__get_localization_key(line=line)
+            key = self._get_localization_key(line=line)
             if key is None:
                 key = "not_program_data"
             self.__original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
@@ -361,36 +361,36 @@ class Performer(QObject):
         self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
 
     @logger.catch()
-    def __create_game_localization_dictionary(self):
+    def _create_game_localization_dictionary(self):
         self.info_console_value.emit(f'{LanguageConstants.localization_dict_creating_started}'
-                                     f' - {self.__calculate_time_delta()}\n')
+                                     f' - {self._calculate_time_delta()}\n')
         self.info_label_value.emit(LanguageConstants.game_localization_processing)
         original_vanilla_path = self.__paths.get_game_path() / self.__original_language
         target_vanilla_path = self.__paths.get_game_path() / self.__target_language
         for file in original_vanilla_path.rglob('*'):
-            self.__original_vanilla_dictionary | self.__process_file(file=file)
+            self.__original_vanilla_dictionary | self._process_file(file=file)
         for file in target_vanilla_path.rglob('*'):
-            self.__target_vanilla_dictionary | self.__process_file(file=file)
+            self.__target_vanilla_dictionary | self._process_file(file=file)
 
     @logger.catch()
-    def __process_file(self, file: Path):
+    def _process_file(self, file: Path):
         localization_dict = {}
         if file.is_file() and file.suffix in ['.yml', '.txt', ]:
             try:
                 with file.open(mode='r', encoding='utf-8-sig') as file:
                     for line in file.readlines():
-                        localization_key = self.__get_localization_key(line=line)
+                        localization_key = self._get_localization_key(line=line)
                         if localization_key is not None:
                             localization_dict[localization_key] = line.rstrip()
             except Exception as error:
                 error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
+                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
         return localization_dict
 
     @logger.catch()
-    def __create_previous_version_dictionary(self):
+    def _create_previous_version_dictionary(self):
         self.info_console_value.emit(f'{LanguageConstants.previous_localization_dict_creating_started} -'
-                                     f' {self.__calculate_time_delta()}\n')
+                                     f' {self._calculate_time_delta()}\n')
         self.info_label_value.emit(LanguageConstants.previous_localization_processing)
         self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
         print(self.__paths.get_previous_files(target_language=self.__target_language))
@@ -399,38 +399,38 @@ class Performer(QObject):
             try:
                 with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
                     for line in file_with_previous_version.readlines():
-                        localization_key = self.__get_localization_key(line=line)
+                        localization_key = self._get_localization_key(line=line)
                         if localization_key is not None:
                             self.__previous_version_dictionary[localization_key] = line.rstrip()
             except Exception as error:
                 error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
+                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
 
     @logger.catch()
-    def __create_translated_list(self, line_number: int, key_value: dict):
+    def _create_translated_list(self, line_number: int, key_value: dict):
         if line_number == 0:
             self.__translated_list[0] = "l_" + self.__target_language + ":\n"
         else:
             match self.__paths.get_previous_path_validate_result():
                 case True:
-                    self.__translated_list[line_number] = self.__compare_with_previous(key_value=key_value) + "\n"
+                    self.__translated_list[line_number] = self._compare_with_previous(key_value=key_value) + "\n"
                 case False:
-                    self.__translated_list[line_number] = self.__compare_with_vanilla(key_value=key_value) + "\n"
+                    self.__translated_list[line_number] = self._compare_with_vanilla(key_value=key_value) + "\n"
 
     @logger.catch()
-    def __compare_with_previous(self, key_value) -> str:
+    def _compare_with_previous(self, key_value) -> str:
         previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
         if not previous_line.strip():
             previous_line = None
         logger.debug(f'Key - Value: {key_value}')
         if previous_line is None:
-            logger.debug(f'Is {previous_line}')
-            return self.__compare_with_vanilla(key_value=key_value)
+            logger.debug(f'Previous is {previous_line}')
+            return self._compare_with_vanilla(key_value=key_value)
         else:
             return previous_line
 
     @logger.catch()
-    def __compare_with_vanilla(self, key_value: dict) -> str:
+    def _compare_with_vanilla(self, key_value: dict) -> str:
         original_vanilla_value = self.__original_vanilla_dictionary.get(key_value["key"], None)
         target_vanilla_value = self.__target_vanilla_dictionary.get(key_value["key"], None)
         logger.debug(f'Original value - {"found" if original_vanilla_value is not None else None}, '
@@ -443,10 +443,10 @@ class Performer(QObject):
             logger.debug('String is empty')
             return key_value["value"]
         else:
-            return self.__translate_line(translator=self.__translator, line=key_value["value"])
+            return self._translate_line(translator=self.__translator, line=key_value["value"])
 
     @logger.catch()
-    def __translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
+    def _translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
         if self.__current_process_file in self.__need_translate_list:
             translate_flag = True
@@ -457,27 +457,27 @@ class Performer(QObject):
         if translate_flag is False:
             return line + " #NT!"
         else:
-            localization_value = self.__get_localization_value(line=line)
+            localization_value = self._get_localization_value(line=line)
             logger.debug(f'Only text from line {line} - {localization_value}')
             if localization_value is None:
                 return line
             else:
                 try:
-                    modified_line = self.__modify_line(line=localization_value, flag="modify",
-                                                       pattern=self.__shielded_values)
+                    modified_line = self._modify_line(line=localization_value, flag="modify",
+                                                      pattern=self.__shielded_values)
                     translated_line = translator.translate(text=modified_line[1:-1])
-                    normal_string = self.__modify_line(line=translated_line, flag="return_normal_view")
+                    normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
                     if self.__disable_original_line:
                         return line.replace(localization_value, f'\"{normal_string}\"') + ' #NT!'
                     return line + f" <\"{normal_string}\">" + " #NT!"
                 except Exception as error:
                     error_text = f"{LanguageConstants.error_with_translation}\n{line}\n{error}\n"
                     logger.error(f'{error_text}')
-                    self.info_console_value.emit(self.__change_text_style(error_text, 'red'))
+                    self.info_console_value.emit(self._change_text_style(error_text, 'red'))
                     return line + " #Translation Error!"
 
     @logger.catch()
-    def __modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
+    def _modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
         r"""При флаге "modify" позволяет заменить некоторые части строки по шаблону на скрытую, ничего не обозначающую
         переменную. При флаге "return_normal_view" позволяет вернуть нормальный вид строки по словарю параметров"""
         match flag:
@@ -502,7 +502,7 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __change_text_style(text: str, flag):
+    def _change_text_style(text: str, flag):
         match flag:
             case 'red':
                 return f'<span style=\" color: red;\">' + text + '</span>'
@@ -513,7 +513,7 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
+    def _get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
         separated_line = re.findall(pattern=pattern, string=line)
         if separated_line:
             return separated_line[0][0].lstrip()
@@ -522,15 +522,15 @@ class Performer(QObject):
 
     @staticmethod
     @logger.catch()
-    def __get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = ''):
+    def _get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = ''):
         value = re.findall(pattern=pattern, string=line)
         if value:
             return value[0]
 
     @logger.catch()
-    def __process_data(self):
+    def _process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
-        self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self.__calculate_time_delta()}\n')
+        self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self._calculate_time_delta()}\n')
         self.__shielded_values = ShieldedValues.get_common_pattern()
         for file in self.__paths.get_file_hierarchy():
             logger.info(f'Started file {file}')
@@ -541,13 +541,13 @@ class Performer(QObject):
             try:
                 with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
                         changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
-                    info = f"{LanguageConstants.file_opened} {file} - {self.__calculate_time_delta()}\n"
+                    info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
                     self.info_console_value.emit(info)
                     self.__current_original_lines = original_file.readlines()
                     amount_lines = len(self.__current_original_lines)
-                    self.__create_original_language_dictionary()
+                    self._create_original_language_dictionary()
                     for line_number, key_value in self.__original_language_dictionary.items():
-                        self.__create_translated_list(line_number=line_number, key_value=key_value)
+                        self._create_translated_list(line_number=line_number, key_value=key_value)
                         info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
                                f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
                         self.info_label_value.emit(info)
@@ -557,17 +557,25 @@ class Performer(QObject):
                     print(*self.__translated_list, file=target_file, sep='', end='')
             except Exception as error:
                 error_info = f"{LanguageConstants.error_with_data_processing}:\n {error}\n"
-                self.info_console_value.emit(self.__change_text_style(error_info, 'red'))
+                self.info_console_value.emit(self._change_text_style(error_info, 'red'))
 
     def run(self):
         logger.info(f'Process start')
         self.__start_running_time = time.time()
-        self.__create_directory_hierarchy()
-        self.__create_game_localization_dictionary()
+        self._create_directory_hierarchy()
+        self._create_game_localization_dictionary()
         if self.__paths.get_previous_path_validate_result():
-            self.__create_previous_version_dictionary()
-        self.__process_data()
-        info = f"{LanguageConstants.final_time} {self.__calculate_time_delta()}"
-        self.info_console_value.emit(self.__change_text_style(info, 'orange'))
+            self._create_previous_version_dictionary()
+        self._process_data()
+        info = f"{LanguageConstants.final_time} {self._calculate_time_delta()}"
+        self.info_console_value.emit(self._change_text_style(info, 'orange'))
         self.info_label_value.emit(LanguageConstants.final)
         self.finish_thread.emit()
+
+
+class Performer(BasePerformer):
+
+    def __init__(self, *args, **kwargs):
+        super(Performer, self).__init__(*args, **kwargs)
+
+
