@@ -14,7 +14,7 @@ from loguru import logger
 
 from CustomDialog import Ui_Dialog
 from languages.language_constants import LanguageConstants
-from main import Prepper, Performer, Settings
+from main import Prepper, ModernParadoxGamesPerformer, Settings
 from MainWindow import Ui_MainWindow
 from SettingsWindow import Ui_Settings
 import ctypes
@@ -81,7 +81,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
 
         self.__prepper = Prepper()
-        self.__performer: Performer | None = None
+        self.__performer: ModernParadoxGamesPerformer | None = None
 
         self.__preset_values()
         self.__check_readiness()
@@ -435,7 +435,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                            target=self.__ui.selector_target_language_comboBox.currentText())
         self.__settings.save_settings_data()
         self.__ui.progressBar.setValue(0)
-        self.__performer = Performer(
+        self.__performer = ModernParadoxGamesPerformer(
             paths=self.__prepper,
             original_language=self.__ui.selector_original_language_comboBox.currentText(),
             target_language=self.__ui.selector_target_language_comboBox.currentText(),
