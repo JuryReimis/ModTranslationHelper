@@ -573,9 +573,27 @@ class BasePerformer(QObject):
         self.finish_thread.emit()
 
 
-class Performer(BasePerformer):
+class ModernParadoxGamesPerformer(BasePerformer):
 
     def __init__(self, *args, **kwargs):
-        super(Performer, self).__init__(*args, **kwargs)
+        super(ModernParadoxGamesPerformer, self).__init__(*args, **kwargs)
+
+    @logger.catch()
+    def _create_original_language_dictionary(self):
+        r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
+        Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
+        К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
+                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
+        А также в value уже обрезаны пробелы и  символы переноса строки справа"""
+        self.__original_language_dictionary = {}
+        num_str = 0
+        for line in self.__current_original_lines:
+            key = self._get_localization_key(line=line)
+            if key is None:
+                key = "not_program_data"
+            self.__original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
+            num_str += 1
+        self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
 
 
