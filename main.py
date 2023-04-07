@@ -419,7 +419,7 @@ class Performer(QObject):
 
     @logger.catch()
     def __compare_with_previous(self, key_value) -> str:
-        previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
+        previous_line = self.__previous_version_dictionary.get(key_value['key'], '')
         if not previous_line.strip():
             previous_line = None
         logger.debug(f'Key - Value: {key_value}')
