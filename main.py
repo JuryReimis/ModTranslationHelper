@@ -292,26 +292,28 @@ class BasePerformer(QObject):
             disable_original_line: bool = False
     ):
         super(BasePerformer, self).__init__()
-        self.__paths = paths
-        self.__original_language = languages_dict.get(original_language, None)
-        self.__target_language = languages_dict.get(target_language, None)
-        self.__translator = GoogleTranslator(source=original_language, target=target_language)
-        self.__need_translate_list = need_translate_tuple if need_translate is True else tuple()
-        self.__disable_original_line = disable_original_line
+        self._paths = paths
+        self._original_language = languages_dict.get(original_language, None)
+        self._target_language = languages_dict.get(target_language, None)
+        self._translator = GoogleTranslator(source=original_language, target=target_language)
+        self._need_translate_list = need_translate_tuple if need_translate is True else tuple()
+        self._disable_original_line = disable_original_line
 
-        self.__start_running_time = None
-        self.__original_language_dictionary = {}
-        self.__current_process_file: str = ''
-        self.__current_original_lines = []
-        self.__original_vanilla_dictionary = {}
-        self.__target_vanilla_dictionary = {}
-        self.__previous_version_dictionary = {}
-        self.__modified_values = {}
-        self.__translated_list = []
+        self._shielded_values = ShieldedValues.get_common_pattern()
+
+        self._start_running_time = None
+        self._original_language_dictionary = {}
+        self._current_process_file: str = ''
+        self._current_original_lines = []
+        self._original_vanilla_dictionary = {}
+        self._target_vanilla_dictionary = {}
+        self._previous_version_dictionary = {}
+        self._modified_values = {}
+        self._translated_list = []
 
     @logger.catch()
     def _calculate_time_delta(self) -> str:
-        start_time = self.__start_running_time
+        start_time = self._start_running_time
         current_time = time.time()
         delta = current_time - start_time
         return time.strftime('%H:%M:%S', time.gmtime(delta))
@@ -322,17 +324,17 @@ class BasePerformer(QObject):
         self.info_console_value.emit(self._change_text_style(info, 'green'))
         self.info_label_value.emit(LanguageConstants.forming_process)
         logger.debug(f'{info}')
-        if not self.__paths.get_target_path().exists():
+        if not self._paths.get_target_path().exists():
             logger.debug(f'Making target directories')
-            self.__paths.get_target_path().mkdir(parents=True)
+            self._paths.get_target_path().mkdir(parents=True)
         logger.debug(f'Hierarchy creating start.')
-        for file in self.__paths.get_file_hierarchy():
+        for file in self._paths.get_file_hierarchy():
             file: Path
             logger.debug(f'Creating {str(file)}')
-            directory = Path(str(file).replace(self.__original_language, self.__target_language)).parent
+            directory = Path(str(file).replace(self._original_language, self._target_language)).parent
             try:
-                if not (self.__paths.get_target_path() / directory).exists():
-                    (self.__paths.get_target_path() / directory).mkdir(parents=True)
+                if not (self._paths.get_target_path() / directory).exists():
+                    (self._paths.get_target_path() / directory).mkdir(parents=True)
                     info = f"{LanguageConstants.folder_created} {directory} - {self._calculate_time_delta()}\n"
                     self.info_console_value.emit(info)
             except Exception as error:
@@ -344,95 +346,47 @@ class BasePerformer(QObject):
 
     @logger.catch()
     def _create_original_language_dictionary(self):
-        r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
-        Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
-        К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
-                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
-        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
-        А также в value уже обрезаны пробелы и  символы переноса строки справа"""
-        self.__original_language_dictionary = {}
-        num_str = 0
-        for line in self.__current_original_lines:
-            key = self._get_localization_key(line=line)
-            if key is None:
-                key = "not_program_data"
-            self.__original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
-            num_str += 1
-        self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
+        pass
 
     @logger.catch()
     def _create_game_localization_dictionary(self):
-        self.info_console_value.emit(f'{LanguageConstants.localization_dict_creating_started}'
-                                     f' - {self._calculate_time_delta()}\n')
-        self.info_label_value.emit(LanguageConstants.game_localization_processing)
-        original_vanilla_path = self.__paths.get_game_path() / self.__original_language
-        target_vanilla_path = self.__paths.get_game_path() / self.__target_language
-        for file in original_vanilla_path.rglob('*'):
-            self.__original_vanilla_dictionary | self._process_file(file=file)
-        for file in target_vanilla_path.rglob('*'):
-            self.__target_vanilla_dictionary | self._process_file(file=file)
+        pass
 
     @logger.catch()
-    def _process_file(self, file: Path):
-        localization_dict = {}
-        if file.is_file() and file.suffix in ['.yml', '.txt', ]:
-            try:
-                with file.open(mode='r', encoding='utf-8-sig') as file:
-                    for line in file.readlines():
-                        localization_key = self._get_localization_key(line=line)
-                        if localization_key is not None:
-                            localization_dict[localization_key] = line.rstrip()
-            except Exception as error:
-                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
-        return localization_dict
+    def _get_lines_dictionary(self, file: Path) -> dict:
+        pass
 
     @logger.catch()
     def _create_previous_version_dictionary(self):
-        self.info_console_value.emit(f'{LanguageConstants.previous_localization_dict_creating_started} -'
-                                     f' {self._calculate_time_delta()}\n')
-        self.info_label_value.emit(LanguageConstants.previous_localization_processing)
-        self.__previous_version_dictionary = {"lang": "l_" + self.__target_language + ":\n"}
-        print(self.__paths.get_previous_files(target_language=self.__target_language))
-        for file in self.__paths.get_previous_files(target_language=self.__target_language):
-            file: Path
-            try:
-                with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
-                    for line in file_with_previous_version.readlines():
-                        localization_key = self._get_localization_key(line=line)
-                        if localization_key is not None:
-                            self.__previous_version_dictionary[localization_key] = line.rstrip()
-            except Exception as error:
-                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+        pass
 
     @logger.catch()
     def _create_translated_list(self, line_number: int, key_value: dict):
         if line_number == 0:
-            self.__translated_list[0] = "l_" + self.__target_language + ":\n"
+            self._translated_list[0] = "l_" + self._target_language + ":\n"
         else:
-            match self.__paths.get_previous_path_validate_result():
+            match self._paths.get_previous_path_validate_result():
                 case True:
-                    self.__translated_list[line_number] = self._compare_with_previous(key_value=key_value) + "\n"
+                    self._translated_list[line_number] = self._compare_with_previous(key_value=key_value) + "\n"
                 case False:
-                    self.__translated_list[line_number] = self._compare_with_vanilla(key_value=key_value) + "\n"
+                    self._translated_list[line_number] = self._compare_with_vanilla(key_value=key_value) + "\n"
 
     @logger.catch()
     def _compare_with_previous(self, key_value) -> str:
-        previous_line = self.__previous_version_dictionary.get(key_value['key'], None)
+        previous_line = self._previous_version_dictionary.get(key_value['key'], '')
         if not previous_line.strip():
             previous_line = None
         logger.debug(f'Key - Value: {key_value}')
         if previous_line is None:
-            logger.debug(f'Previous is {previous_line}')
+            logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
             return self._compare_with_vanilla(key_value=key_value)
         else:
             return previous_line
 
     @logger.catch()
     def _compare_with_vanilla(self, key_value: dict) -> str:
-        original_vanilla_value = self.__original_vanilla_dictionary.get(key_value["key"], None)
-        target_vanilla_value = self.__target_vanilla_dictionary.get(key_value["key"], None)
+        original_vanilla_value = self._original_vanilla_dictionary.get(key_value["key"], None)
+        target_vanilla_value = self._target_vanilla_dictionary.get(key_value["key"], None)
         logger.debug(f'Original value - {"found" if original_vanilla_value is not None else None}, '
                      f'Target value - {"found" if target_vanilla_value is not None else None} ')
         if original_vanilla_value is not None and target_vanilla_value is not None:
@@ -443,12 +397,12 @@ class BasePerformer(QObject):
             logger.debug('String is empty')
             return key_value["value"]
         else:
-            return self._translate_line(translator=self.__translator, line=key_value["value"])
+            return self._translate_line(translator=self._translator, line=key_value["value"])
 
     @logger.catch()
     def _translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
-        if self.__current_process_file in self.__need_translate_list:
+        if self._current_process_file in self._need_translate_list:
             translate_flag = True
             logger.debug(f'Current file is checked for translating')
         else:
@@ -464,10 +418,10 @@ class BasePerformer(QObject):
             else:
                 try:
                     modified_line = self._modify_line(line=localization_value, flag="modify",
-                                                      pattern=self.__shielded_values)
+                                                      pattern=self._shielded_values)
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
-                    if self.__disable_original_line:
+                    if self._disable_original_line:
                         return line.replace(localization_value, f'\"{normal_string}\"') + ' #NT!'
                     return line + f" <\"{normal_string}\">" + " #NT!"
                 except Exception as error:
@@ -482,19 +436,20 @@ class BasePerformer(QObject):
         переменную. При флаге "return_normal_view" позволяет вернуть нормальный вид строки по словарю параметров"""
         match flag:
             case "modify":
-                self.__modified_values = {}
+                self._modified_values = {}
                 shadow_number = 0
                 regular_groups = re.findall(pattern=pattern, string=line)
                 logger.debug(f'Found params for modify - {regular_groups}')
                 if regular_groups:
                     for step in regular_groups:
-                        self.__modified_values[shadow_number] = step
+                        self._modified_values[shadow_number] = step
                         line = line.replace(step, f"PROTARG_{shadow_number}")
                         shadow_number += 1
                 return line
             case "return_normal_view":
-                for key, value in self.__modified_values.items():
+                for key, value in self._modified_values.items():
                     line = line.replace(f'PROTARG_{key}', value)
+                    line = line.replace(f'ПРОТАРГ_{key}', value)
                 return line
             case _:
                 self.info_console_value(LanguageConstants.error_with_modification)
@@ -514,57 +469,24 @@ class BasePerformer(QObject):
     @staticmethod
     @logger.catch()
     def _get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
-        separated_line = re.findall(pattern=pattern, string=line)
-        if separated_line:
-            return separated_line[0][0].lstrip()
-        else:
-            return None
+        pass
 
     @staticmethod
     @logger.catch()
     def _get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = ''):
-        value = re.findall(pattern=pattern, string=line)
-        if value:
-            return value[0]
+        pass
 
     @logger.catch()
     def _process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
-        self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self._calculate_time_delta()}\n')
-        self.__shielded_values = ShieldedValues.get_common_pattern()
-        for file in self.__paths.get_file_hierarchy():
-            logger.info(f'Started file {file}')
-            self.__current_process_file = file
-            original_file_full_path = self.__paths.get_original_mode_path() / file
-            changed_file_full_path = self.__paths.get_target_path() / str(file).replace(self.__original_language,
-                                                                                        self.__target_language)
-            try:
-                with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
-                        changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
-                    info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
-                    self.info_console_value.emit(info)
-                    self.__current_original_lines = original_file.readlines()
-                    amount_lines = len(self.__current_original_lines)
-                    self._create_original_language_dictionary()
-                    for line_number, key_value in self.__original_language_dictionary.items():
-                        self._create_translated_list(line_number=line_number, key_value=key_value)
-                        info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
-                               f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
-                        self.info_label_value.emit(info)
-                        self.progress_bar_value.emit(original_file_full_path.stat().st_size /
-                                                     len(self.__current_original_lines) /
-                                                     self.__paths.get_original_files_size())
-                    print(*self.__translated_list, file=target_file, sep='', end='')
-            except Exception as error:
-                error_info = f"{LanguageConstants.error_with_data_processing}:\n {error}\n"
-                self.info_console_value.emit(self._change_text_style(error_info, 'red'))
+        pass
 
     def run(self):
         logger.info(f'Process start')
-        self.__start_running_time = time.time()
+        self._start_running_time = time.time()
         self._create_directory_hierarchy()
         self._create_game_localization_dictionary()
-        if self.__paths.get_previous_path_validate_result():
+        if self._paths.get_previous_path_validate_result():
             self._create_previous_version_dictionary()
         self._process_data()
         info = f"{LanguageConstants.final_time} {self._calculate_time_delta()}"
@@ -586,14 +508,105 @@ class ModernParadoxGamesPerformer(BasePerformer):
                         'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
         Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
         А также в value уже обрезаны пробелы и  символы переноса строки справа"""
-        self.__original_language_dictionary = {}
+        self._original_language_dictionary = {}
         num_str = 0
-        for line in self.__current_original_lines:
+        for line in self._current_original_lines:
             key = self._get_localization_key(line=line)
             if key is None:
                 key = "not_program_data"
-            self.__original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
+            self._original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
             num_str += 1
-        self.__translated_list = ['' for _ in range(len(self.__current_original_lines))]
+        self._translated_list = ['' for _ in range(len(self._current_original_lines))]
 
+    @logger.catch()
+    def _create_game_localization_dictionary(self):
+        self.info_console_value.emit(f'{LanguageConstants.localization_dict_creating_started}'
+                                     f' - {self._calculate_time_delta()}\n')
+        self.info_label_value.emit(LanguageConstants.game_localization_processing)
+        original_vanilla_path = self._paths.get_game_path() / self._original_language
+        target_vanilla_path = self._paths.get_game_path() / self._target_language
+        for file in original_vanilla_path.rglob('*'):
+            self._original_vanilla_dictionary | self._get_lines_dictionary(file=file)
+        for file in target_vanilla_path.rglob('*'):
+            self._target_vanilla_dictionary | self._get_lines_dictionary(file=file)
 
+    @logger.catch()
+    def _get_lines_dictionary(self, file: Path) -> dict:
+        localization_dict = {}
+        if file.is_file() and file.suffix in ['.yml', '.txt', ]:
+            try:
+                with file.open(mode='r', encoding='utf-8-sig') as file:
+                    for line in file.readlines():
+                        localization_key = self._get_localization_key(line=line)
+                        if localization_key is not None:
+                            localization_dict[localization_key] = line.rstrip()
+            except Exception as error:
+                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
+                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+        return localization_dict
+
+    @logger.catch()
+    def _create_previous_version_dictionary(self):
+        self.info_console_value.emit(f'{LanguageConstants.previous_localization_dict_creating_started} -'
+                                     f' {self._calculate_time_delta()}\n')
+        self.info_label_value.emit(LanguageConstants.previous_localization_processing)
+        self._previous_version_dictionary = {"lang": "l_" + self._target_language + ":\n"}
+        print(self._paths.get_previous_files(target_language=self._target_language))
+        for file in self._paths.get_previous_files(target_language=self._target_language):
+            file: Path
+            try:
+                with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
+                    for line in file_with_previous_version.readlines():
+                        localization_key = self._get_localization_key(line=line)
+                        if localization_key is not None:
+                            self._previous_version_dictionary[localization_key] = line.rstrip()
+            except Exception as error:
+                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
+                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+
+    @staticmethod
+    @logger.catch()
+    def _get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
+        separated_line = re.findall(pattern=pattern, string=line)
+        if separated_line:
+            return separated_line[0][0].lstrip()
+        else:
+            return None
+
+    @staticmethod
+    @logger.catch()
+    def _get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = '') -> str | None:
+        value = re.findall(pattern=pattern, string=line)
+        if value:
+            return value[0]
+
+    @logger.catch()
+    def _process_data(self):
+        r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
+        self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self._calculate_time_delta()}\n')
+        for file in self._paths.get_file_hierarchy():
+            logger.info(f'Started file {file}')
+            self._current_process_file = file
+            original_file_full_path = self._paths.get_original_mode_path() / file
+            changed_file_full_path = self._paths.get_target_path() / str(file).replace(self._original_language,
+                                                                                       self._target_language)
+            try:
+                with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
+                        changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
+                    info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
+                    self.info_console_value.emit(info)
+                    self._current_original_lines = original_file.readlines()
+                    amount_lines = len(self._current_original_lines)
+                    self._create_original_language_dictionary()
+                    for line_number, key_value in self._original_language_dictionary.items():
+                        self._create_translated_list(line_number=line_number, key_value=key_value)
+                        info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
+                               f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
+                        self.info_label_value.emit(info)
+                        self.progress_bar_value.emit(original_file_full_path.stat().st_size /
+                                                     len(self._current_original_lines) /
+                                                     self._paths.get_original_files_size())
+                    print(*self._translated_list, file=target_file, sep='', end='')
+            except Exception as error:
+                error_info = f"{LanguageConstants.error_with_data_processing}:\n {error}\n"
+                self.info_console_value.emit(self._change_text_style(error_info, 'red'))
