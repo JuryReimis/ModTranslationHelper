@@ -9,6 +9,7 @@ from languages.language_constants import LanguageConstants
 
 from loguru import logger
 
+from parsers.modern_paradox_parser import ModernParadoxParser
 from shielded_values import ShieldedValues
 
 
@@ -346,6 +347,12 @@ class BasePerformer(QObject):
 
     @logger.catch()
     def _create_original_language_dictionary(self):
+        r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
+        Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
+        К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
+                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+        Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
+        А также в value уже обрезаны пробелы и  символы переноса строки справа"""
         pass
 
     @logger.catch()
@@ -362,14 +369,7 @@ class BasePerformer(QObject):
 
     @logger.catch()
     def _create_translated_list(self, line_number: int, key_value: dict):
-        if line_number == 0:
-            self._translated_list[0] = "l_" + self._target_language + ":\n"
-        else:
-            match self._paths.get_previous_path_validate_result():
-                case True:
-                    self._translated_list[line_number] = self._compare_with_previous(key_value=key_value) + "\n"
-                case False:
-                    self._translated_list[line_number] = self._compare_with_vanilla(key_value=key_value) + "\n"
+        pass
 
     @logger.catch()
     def _compare_with_previous(self, key_value) -> str:
@@ -381,7 +381,7 @@ class BasePerformer(QObject):
             logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
             return self._compare_with_vanilla(key_value=key_value)
         else:
-            return previous_line
+            return " ".join((key_value['key'], previous_line))
 
     @logger.catch()
     def _compare_with_vanilla(self, key_value: dict) -> str:
@@ -392,15 +392,15 @@ class BasePerformer(QObject):
         if original_vanilla_value is not None and target_vanilla_value is not None:
             if original_vanilla_value == key_value["value"]:
                 logger.debug(f'Return vanilla value')
-                return target_vanilla_value
-        if key_value["value"] == "":
+                return " ".join((key_value["key"], target_vanilla_value))
+        if key_value["value"] in ["", None]:
             logger.debug('String is empty')
-            return key_value["value"]
+            return " ".join((key_value["key"], key_value["value"]))
         else:
-            return self._translate_line(translator=self._translator, line=key_value["value"])
+            return self._translate_line(translator=self._translator, key_value=key_value)
 
     @logger.catch()
-    def _translate_line(self, translator: GoogleTranslator | None, line: str) -> str:
+    def _translate_line(self, translator: GoogleTranslator | None, key_value: dict) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
         if self._current_process_file in self._need_translate_list:
             translate_flag = True
@@ -409,12 +409,12 @@ class BasePerformer(QObject):
             translate_flag = False
             logger.debug(f'Current file is not checked for translating')
         if translate_flag is False:
-            return line + " #NT!"
+            return " ".join((key_value["key"], key_value["value"], "#NT!"))
         else:
-            localization_value = self._get_localization_value(line=line)
-            logger.debug(f'Only text from line {line} - {localization_value}')
+            localization_value = key_value["value"]
+            logger.debug(f'Only text from line - {localization_value}')
             if localization_value is None:
-                return line
+                return " ".join((key_value["key"], key_value["value"]))
             else:
                 try:
                     modified_line = self._modify_line(line=localization_value, flag="modify",
@@ -422,13 +422,13 @@ class BasePerformer(QObject):
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
                     if self._disable_original_line:
-                        return line.replace(localization_value, f'\"{normal_string}\"') + ' #NT!'
-                    return line + f" <\"{normal_string}\">" + " #NT!"
+                        return " ".join((key_value["key"], key_value["value"].replace(localization_value, f'\"{normal_string}\"'), '#NT!'))
+                    return " ".join((key_value["key"], key_value["value"], f" <\"{normal_string}\">", " #NT!"))
                 except Exception as error:
-                    error_text = f"{LanguageConstants.error_with_translation}\n{line}\n{error}\n"
+                    error_text = f"{LanguageConstants.error_with_translation}\n{key_value['value']} {key_value['value']}\n{error}\n"
                     logger.error(f'{error_text}')
                     self.info_console_value.emit(self._change_text_style(error_text, 'red'))
-                    return line + " #Translation Error!"
+                    return " ".join((key_value['key'], key_value['value'], "#Translation Error!"))
 
     @logger.catch()
     def _modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
@@ -499,24 +499,21 @@ class ModernParadoxGamesPerformer(BasePerformer):
 
     def __init__(self, *args, **kwargs):
         super(ModernParadoxGamesPerformer, self).__init__(*args, **kwargs)
+        self._default_padding = 1
 
     @logger.catch()
-    def _create_original_language_dictionary(self):
+    def _create_original_language_dictionary(self, filename):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
         Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
         К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
-                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+                        'value': " No order."'},
         Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
         А также в value уже обрезаны пробелы и  символы переноса строки справа"""
         self._original_language_dictionary = {}
-        num_str = 0
-        for line in self._current_original_lines:
-            key = self._get_localization_key(line=line)
-            if key is None:
-                key = "not_program_data"
-            self._original_language_dictionary[num_str] = {"key": key, "value": line.rstrip()}
-            num_str += 1
-        self._translated_list = ['' for _ in range(len(self._current_original_lines))]
+        ordered_dictionary = ModernParadoxParser(filename=filename).parse_file()
+        self._original_language_dictionary = {num_str: {"key": key_value[0], "value": key_value[1]} for
+                                              num_str, key_value in enumerate(ordered_dictionary.items())}
+        self._translated_list = ['' for _ in range(len(self._original_language_dictionary))]
 
     @logger.catch()
     def _create_game_localization_dictionary(self):
@@ -526,24 +523,11 @@ class ModernParadoxGamesPerformer(BasePerformer):
         original_vanilla_path = self._paths.get_game_path() / self._original_language
         target_vanilla_path = self._paths.get_game_path() / self._target_language
         for file in original_vanilla_path.rglob('*'):
-            self._original_vanilla_dictionary | self._get_lines_dictionary(file=file)
+            lines_dictionary = ModernParadoxParser(filename=file).parse_file()
+            self._original_vanilla_dictionary | dict(lines_dictionary)
         for file in target_vanilla_path.rglob('*'):
-            self._target_vanilla_dictionary | self._get_lines_dictionary(file=file)
-
-    @logger.catch()
-    def _get_lines_dictionary(self, file: Path) -> dict:
-        localization_dict = {}
-        if file.is_file() and file.suffix in ['.yml', '.txt', ]:
-            try:
-                with file.open(mode='r', encoding='utf-8-sig') as file:
-                    for line in file.readlines():
-                        localization_key = self._get_localization_key(line=line)
-                        if localization_key is not None:
-                            localization_dict[localization_key] = line.rstrip()
-            except Exception as error:
-                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
-        return localization_dict
+            lines_dictionary = ModernParadoxParser(filename=file).parse_file()
+            self._target_vanilla_dictionary | dict(lines_dictionary)
 
     @logger.catch()
     def _create_previous_version_dictionary(self):
@@ -554,31 +538,20 @@ class ModernParadoxGamesPerformer(BasePerformer):
         print(self._paths.get_previous_files(target_language=self._target_language))
         for file in self._paths.get_previous_files(target_language=self._target_language):
             file: Path
-            try:
-                with file.open(mode='r', encoding='utf-8-sig') as file_with_previous_version:
-                    for line in file_with_previous_version.readlines():
-                        localization_key = self._get_localization_key(line=line)
-                        if localization_key is not None:
-                            self._previous_version_dictionary[localization_key] = line.rstrip()
-            except Exception as error:
-                error_text = f"{LanguageConstants.error_with_file_processing} {str(file)} - {error}"
-                self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+            self._previous_version_dictionary | dict(ModernParadoxParser(filename=file).parse_file())
 
-    @staticmethod
     @logger.catch()
-    def _get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
-        separated_line = re.findall(pattern=pattern, string=line)
-        if separated_line:
-            return separated_line[0][0].lstrip()
+    def _create_translated_list(self, line_number: int, key_value: dict):
+        if line_number == 0:
+            self._translated_list[0] = "l_" + self._target_language + ":\n"
         else:
-            return None
-
-    @staticmethod
-    @logger.catch()
-    def _get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = '') -> str | None:
-        value = re.findall(pattern=pattern, string=line)
-        if value:
-            return value[0]
+            match self._paths.get_previous_path_validate_result():
+                case True:
+                    self._translated_list[line_number] = " " * self._default_padding \
+                                                         + self._compare_with_previous(key_value=key_value) + "\n"
+                case False:
+                    self._translated_list[line_number] = " " * self._default_padding \
+                                                         + self._compare_with_vanilla(key_value=key_value) + "\n"
 
     @logger.catch()
     def _process_data(self):
@@ -590,23 +563,17 @@ class ModernParadoxGamesPerformer(BasePerformer):
             original_file_full_path = self._paths.get_original_mode_path() / file
             changed_file_full_path = self._paths.get_target_path() / str(file).replace(self._original_language,
                                                                                        self._target_language)
-            try:
-                with original_file_full_path.open(mode='r', encoding='utf-8-sig') as original_file, \
-                        changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
-                    info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
-                    self.info_console_value.emit(info)
-                    self._current_original_lines = original_file.readlines()
-                    amount_lines = len(self._current_original_lines)
-                    self._create_original_language_dictionary()
-                    for line_number, key_value in self._original_language_dictionary.items():
-                        self._create_translated_list(line_number=line_number, key_value=key_value)
-                        info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
-                               f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
-                        self.info_label_value.emit(info)
-                        self.progress_bar_value.emit(original_file_full_path.stat().st_size /
-                                                     len(self._current_original_lines) /
-                                                     self._paths.get_original_files_size())
-                    print(*self._translated_list, file=target_file, sep='', end='')
-            except Exception as error:
-                error_info = f"{LanguageConstants.error_with_data_processing}:\n {error}\n"
-                self.info_console_value.emit(self._change_text_style(error_info, 'red'))
+            with changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
+                info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
+                self.info_console_value.emit(info)
+                self._create_original_language_dictionary(original_file_full_path)
+                amount_lines = len(self._original_language_dictionary)
+                for line_number, key_value in self._original_language_dictionary.items():
+                    self._create_translated_list(line_number=line_number, key_value=key_value)
+                    info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
+                           f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
+                    self.info_label_value.emit(info)
+                    self.progress_bar_value.emit(original_file_full_path.stat().st_size /
+                                                 amount_lines /
+                                                 self._paths.get_original_files_size())
+                print(*self._translated_list, file=target_file, sep='', end='')
