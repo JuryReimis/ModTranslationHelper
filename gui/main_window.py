@@ -12,19 +12,19 @@ from PyQt5.QtCore import pyqtSlot, QSize
 from PyQt5.QtWidgets import QLabel
 from loguru import logger
 
-from CustomDialog import Ui_Dialog
+from gui.dialog_window import CustomDialog
+from gui.settings_window import SettingsWindow
 from languages.language_constants import LanguageConstants
 from main import Prepper, ModernParadoxGamesPerformer, Settings
-from MainWindow import Ui_MainWindow
-from SettingsWindow import Ui_Settings
+from gui.window_ui.MainWindow import Ui_MainWindow
 import ctypes
 import qtawesome as qta
 
-BASE_DIR = Path.cwd()
+BASE_DIR = Path.cwd().parent
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
 HOME_DIR = Path.home()
 
-PROGRAM_VERSION = '1.3.1'
+PROGRAM_VERSION = '1.4.0 beta'
 
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
@@ -36,7 +36,7 @@ if hasattr(QtCore.Qt, 'AA_UseHighDpiPixmaps'):
 class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self, parent=None):
-        logger.add(sink='logs/debug.log', rotation='10 MB', compression="zip")
+        logger.add(sink=BASE_DIR / 'logs/debug.log', rotation='10 MB', compression="zip")
 
         super(MainWindow, self).__init__(parent=parent)
         self.__ui = Ui_MainWindow()
@@ -46,7 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init_languages()
         self.__init_menubar()
         self.__init_languages_dict()
-        self.setWindowIcon(QtGui.QIcon('icons/main icon.jpg'))
+        self.setWindowIcon(QtGui.QIcon(str(BASE_DIR / 'icons/main icon.jpg')))
         self.__running_thread = None
 
         self.__ui.run_pushButton.setEnabled(False)
@@ -107,7 +107,8 @@ class MainWindow(QtWidgets.QMainWindow):
             local_data_path = BASE_DIR / 'Settings'
             self.__settings = Settings(local_data_path)
             self.__init_languages()
-            error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist)
+            error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist,
+                                 icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show()
 
     @logger.catch()
@@ -221,7 +222,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if str(self.__prepper.get_game_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
                                      text=f'{self.__prepper.get_game_path()} '
-                                          f'- {LanguageConstants.error_folder_does_not_exist}')
+                                          f'- {LanguageConstants.error_folder_does_not_exist}',
+                                     icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
         else:
             self.__settings.set_last_game_directory(self.__prepper.get_game_path())
@@ -231,7 +233,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.__prepper.get_game_path_validate_result():
             os.startfile(self.__prepper.get_game_path())
         else:
-            error = CustomDialog(parent=self, text=self.__prepper.get_game_path())
+            error = CustomDialog(parent=self, text=self.__prepper.get_game_path(),
+                                 icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
     def __select_original_directory(self):
@@ -250,7 +253,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if str(self.__prepper.get_original_mode_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
                                      text=f'{self.__prepper.get_original_mode_path() / self.__ui.selector_original_language_comboBox.currentText()} -'
-                                          f' {LanguageConstants.error_folder_does_not_exist}')
+                                          f' {LanguageConstants.error_folder_does_not_exist}',
+                                     icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
             self.__ui.original_directory_lineEdit.clear()
         else:
@@ -262,7 +266,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.__prepper.get_original_mode_path_validate_result():
             os.startfile(self.__prepper.get_original_mode_path())
         else:
-            error = CustomDialog(parent=self, text=self.__prepper.get_original_mode_path())
+            error = CustomDialog(parent=self, text=self.__prepper.get_original_mode_path(),
+                                 icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
     def __select_previous_directory(self):
@@ -279,7 +284,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if str(self.__prepper.get_previous_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
                                      text=f'{self.__prepper.get_previous_path() / self.__ui.selector_target_language_comboBox.currentText()} - '
-                                          f'{LanguageConstants.error_folder_does_not_exist}')
+                                          f'{LanguageConstants.error_folder_does_not_exist}',
+                                     icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
             else:
                 self.__settings.set_last_previous_directory(Path(''))
@@ -290,7 +296,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.__prepper.get_previous_path_validate_result():
             os.startfile(self.__prepper.get_previous_path())
         else:
-            error = CustomDialog(parent=self, text=self.__prepper.get_previous_path())
+            error = CustomDialog(parent=self, text=self.__prepper.get_previous_path(),
+                                 icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
     def __select_target_directory(self):
@@ -304,7 +311,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if not self.__prepper.get_target_path_validate_result():
             if str(self.__prepper.get_target_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{LanguageConstants.error_drive_not_exist}')
+                                     text=f'{LanguageConstants.error_drive_not_exist}',
+                                     icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
             self.__ui.target_directory_lineEdit.clear()
         else:
@@ -315,7 +323,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.__prepper.get_target_path_validate_result() and self.__prepper.get_target_path().exists():
             os.startfile(self.__prepper.get_target_path())
         else:
-            error = CustomDialog(parent=self, text=self.__prepper.get_target_path())
+            error = CustomDialog(parent=self, text=self.__prepper.get_target_path(),
+                                 icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
     def __original_language_changed(self):
@@ -353,7 +362,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __show_warning(self):
         if self.__ui.disable_original_line_checkBox.isChecked():
             window = CustomDialog(parent=self, text=LanguageConstants.warning_disable_original_line,
-                                  custom_title=LanguageConstants.warning_disable_original_line_title)
+                                  custom_title=LanguageConstants.warning_disable_original_line_title,
+                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             window.exec_()
 
     def __check_all_checkboxes(self):
@@ -461,7 +471,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 class AddInfoIcons:
-
     stylesheet = "QToolTip { color: #29ab87;" \
                  " font-size: 18px;" \
                  " font-weight: bold; }"
@@ -570,48 +579,6 @@ class ResizeWindow:
     def resize_window(self):
         if self.new_width and self.new_height:
             self.main_window.resize(int(self.new_width), int(self.new_height))
-
-
-class SettingsWindow(QtWidgets.QDialog):
-    @logger.catch()
-    def __init__(self, parent=None, settings: Settings = None):
-        super(SettingsWindow, self).__init__(parent)
-        self.__ui = Ui_Settings()
-        self.__ui.setupUi(self)
-
-        self.__settings = settings
-        self.__set_initial_values()
-
-        self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
-
-    @logger.catch()
-    def __set_initial_values(self):
-        self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
-
-    def save_settings(self):
-        self.__settings.save_settings_data()
-        self.close()
-
-
-class CustomDialog(QtWidgets.QDialog):
-
-    @logger.catch()
-    def __init__(self, parent=None, text=None, custom_title=None):
-        super(CustomDialog, self).__init__(parent)
-        self.__ui = Ui_Dialog()
-        self.__ui.setupUi(self)
-        self.__text = text
-        if custom_title:
-            self.setWindowTitle(custom_title)
-        self.setWindowIcon(QtGui.QIcon('icons/error icon.jpg'))
-
-        self.__ui.no_path_error_textBrowser.setText(text)
-
-    @logger.catch()
-    def show_path_error(self):
-        error_text = f'{LanguageConstants.error_path_not_exists}: {self.__text}'
-        self.__ui.no_path_error_textBrowser.setText(error_text)
-        self.exec_()
 
 
 if __name__ == '__main__':
