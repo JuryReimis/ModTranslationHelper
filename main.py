@@ -11,6 +11,7 @@ from loguru import logger
 
 from parsers.modern_paradox_parser import ModernParadoxParser
 from shielded_values import ShieldedValues
+from translators.translator_manager import TranslatorManager
 
 
 class Prepper:
@@ -199,16 +200,17 @@ class Settings:
                 Path.mkdir(self.__local_data_path, exist_ok=True)
                 logger.debug(f'Settings directory - created: {local_data_path}')
                 self.save_settings_data()
-            self.available_apis = self.__get_translator_apis()
             self.disable_original_line = False
         else:
             logger.warning(f'settings storage: {local_data_path}: not exists')
 
     @staticmethod
-    def __get_translator_apis():
-        _ = {
-            'GoogleTranslator': GoogleTranslator,
-        }
+    def get_translator_apis():
+        _ = [
+            'GoogleTranslator',
+            'DeepLTranslator',
+            'YandexTranslator',
+        ]
         return _
 
     def set_last_game_directory(self, value: Path):
@@ -239,8 +241,8 @@ class Settings:
         self.__settings['last_original_language'] = original
         self.__settings['last_target_language'] = target
 
-    def set_translator_api(self):
-        pass
+    def set_translator_api(self, translator_api):
+        self.__settings['translator_api'] = translator_api
 
     def set_app_language(self, value):
         self.__settings['app_language'] = value
@@ -275,6 +277,28 @@ class Settings:
                 json.dump(self.__settings, settings, indent=4)
 
 
+class TranslatorAccount:
+    def __init__(self, local_path: Path):
+        self.__translator_accounts_path = local_path / 'translator accounts.json'
+        if self.__translator_accounts_path.exists():
+            with self.__translator_accounts_path.open(mode='r', encoding='utf-8-sig') as accounts:
+                self.__translator_accounts = json.load(accounts)
+        else:
+            with self.__translator_accounts_path.open(mode='w') as accounts:
+                self.__translator_accounts = {}
+                json.dump(self.__translator_accounts, accounts, indent=4)
+
+    def get_translator_account(self, translator_name) -> dict:
+        return self.__translator_accounts.get(translator_name, {})
+
+    def add_new_account(self, translator_name: str, **data):
+        self.__translator_accounts[translator_name] = data
+
+    def save_accounts(self):
+        with self.__translator_accounts_path.open(mode='w', encoding='utf-8-sig') as accounts:
+            json.dump(self.__translator_accounts, accounts, indent=4)
+
+
 class BasePerformer(QObject):
     info_console_value = pyqtSignal(str)
     info_label_value = pyqtSignal(str)
@@ -285,6 +309,7 @@ class BasePerformer(QObject):
     def __init__(
             self,
             paths: Prepper,
+            translator: TranslatorManager = None,
             original_language: str = None,
             target_language: str = None,
             languages_dict: dict = None,
@@ -296,7 +321,7 @@ class BasePerformer(QObject):
         self._paths = paths
         self._original_language = languages_dict.get(original_language, None)
         self._target_language = languages_dict.get(target_language, None)
-        self._translator = GoogleTranslator(source=original_language, target=target_language)
+        self._translator = translator
         self._need_translate_list = need_translate_tuple if need_translate is True else tuple()
         self._disable_original_line = disable_original_line
 
@@ -350,7 +375,7 @@ class BasePerformer(QObject):
         r"""Создает словарь, состоящий из номера строки, в качестве ключа и словаря, в качестве значения
         Каждый словарь содержит пару ключ-значение: key: 'key', value: 'value'
         К применру: 11: {'key': 'AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0',
-                        'value': ' AI_UNIT_TOOLTIP_UNIT_STACK_NO_ORDER:0 " No order."'},
+                        'value': '" No order."'},
         Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
         А также в value уже обрезаны пробелы и  символы переноса строки справа"""
         pass
@@ -373,62 +398,15 @@ class BasePerformer(QObject):
 
     @logger.catch()
     def _compare_with_previous(self, key_value) -> str:
-        previous_line = self._previous_version_dictionary.get(key_value['key'], '')
-        if not previous_line.strip():
-            previous_line = None
-        logger.debug(f'Key - Value: {key_value}')
-        if previous_line is None:
-            logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
-            return self._compare_with_vanilla(key_value=key_value)
-        else:
-            return " ".join((key_value['key'], previous_line))
+        pass
 
     @logger.catch()
     def _compare_with_vanilla(self, key_value: dict) -> str:
-        original_vanilla_value = self._original_vanilla_dictionary.get(key_value["key"], None)
-        target_vanilla_value = self._target_vanilla_dictionary.get(key_value["key"], None)
-        logger.debug(f'Original value - {"found" if original_vanilla_value is not None else None}, '
-                     f'Target value - {"found" if target_vanilla_value is not None else None} ')
-        if original_vanilla_value is not None and target_vanilla_value is not None:
-            if original_vanilla_value == key_value["value"]:
-                logger.debug(f'Return vanilla value')
-                return " ".join((key_value["key"], target_vanilla_value))
-        if key_value["value"] in ["", None]:
-            logger.debug('String is empty')
-            return " ".join((key_value["key"], key_value["value"]))
-        else:
-            return self._translate_line(translator=self._translator, key_value=key_value)
+        pass
 
     @logger.catch()
     def _translate_line(self, translator: GoogleTranslator | None, key_value: dict) -> str:
-        r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
-        if self._current_process_file in self._need_translate_list:
-            translate_flag = True
-            logger.debug(f'Current file is checked for translating')
-        else:
-            translate_flag = False
-            logger.debug(f'Current file is not checked for translating')
-        if translate_flag is False:
-            return " ".join((key_value["key"], key_value["value"], "#NT!"))
-        else:
-            localization_value = key_value["value"]
-            logger.debug(f'Only text from line - {localization_value}')
-            if localization_value is None:
-                return " ".join((key_value["key"], key_value["value"]))
-            else:
-                try:
-                    modified_line = self._modify_line(line=localization_value, flag="modify",
-                                                      pattern=self._shielded_values)
-                    translated_line = translator.translate(text=modified_line[1:-1])
-                    normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
-                    if self._disable_original_line:
-                        return " ".join((key_value["key"], key_value["value"].replace(localization_value, f'\"{normal_string}\"'), '#NT!'))
-                    return " ".join((key_value["key"], key_value["value"], f" <\"{normal_string}\">", " #NT!"))
-                except Exception as error:
-                    error_text = f"{LanguageConstants.error_with_translation}\n{key_value['value']} {key_value['value']}\n{error}\n"
-                    logger.error(f'{error_text}')
-                    self.info_console_value.emit(self._change_text_style(error_text, 'red'))
-                    return " ".join((key_value['key'], key_value['value'], "#Translation Error!"))
+        pass
 
     @logger.catch()
     def _modify_line(self, line: str, pattern: str | None = r"\[.*?\]", flag: str | None = None) -> str | None:
@@ -465,16 +443,6 @@ class BasePerformer(QObject):
                 return f'<span style=\" color: green;\">' + text + '</span>'
             case 'orange':
                 return f'<span style=\" color: orange;\">' + text + '</span>'
-
-    @staticmethod
-    @logger.catch()
-    def _get_localization_key(pattern=r"(.*:)(\d*)( *)(\".*\")", line='') -> str | None:
-        pass
-
-    @staticmethod
-    @logger.catch()
-    def _get_localization_value(pattern: str = r'(\".*\w+?.*\")', line: str = ''):
-        pass
 
     @logger.catch()
     def _process_data(self):
@@ -552,6 +520,67 @@ class ModernParadoxGamesPerformer(BasePerformer):
                 case False:
                     self._translated_list[line_number] = " " * self._default_padding \
                                                          + self._compare_with_vanilla(key_value=key_value) + "\n"
+
+    @logger.catch()
+    def _compare_with_previous(self, key_value) -> str:
+        previous_line = self._previous_version_dictionary.get(key_value['key'], '')
+        if not previous_line.strip():
+            previous_line = None
+        logger.debug(f'Key - Value: {key_value}')
+        if previous_line is None:
+            logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
+            return self._compare_with_vanilla(key_value=key_value)
+        else:
+            return " ".join((key_value['key'], previous_line))
+
+    @logger.catch()
+    def _compare_with_vanilla(self, key_value: dict) -> str:
+        original_vanilla_value = self._original_vanilla_dictionary.get(key_value["key"], None)
+        target_vanilla_value = self._target_vanilla_dictionary.get(key_value["key"], None)
+        logger.debug(f'Original value - {"found" if original_vanilla_value is not None else None}, '
+                     f'Target value - {"found" if target_vanilla_value is not None else None} ')
+        if original_vanilla_value is not None and target_vanilla_value is not None:
+            if original_vanilla_value == key_value["value"]:
+                logger.debug(f'Return vanilla value')
+                return " ".join((key_value["key"], target_vanilla_value))
+        if key_value["value"] in ["", None]:
+            logger.debug('String is empty')
+            return " ".join((key_value["key"], key_value["value"]))
+        else:
+            return self._translate_line(translator=self._translator, key_value=key_value)
+
+    @logger.catch()
+    def _translate_line(self, translator: GoogleTranslator | None, key_value: dict) -> str:
+        r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
+        if self._current_process_file in self._need_translate_list:
+            translate_flag = True
+            logger.debug(f'Current file is checked for translating')
+        else:
+            translate_flag = False
+            logger.debug(f'Current file is not checked for translating')
+        if translate_flag is False:
+            return " ".join((key_value["key"], key_value["value"], "#NT!"))
+        else:
+            localization_value = key_value["value"]
+            logger.debug(f'Only text from line - {localization_value}')
+            if localization_value is None:
+                return " ".join((key_value["key"], key_value["value"]))
+            else:
+                try:
+                    modified_line = self._modify_line(line=localization_value, flag="modify",
+                                                      pattern=self._shielded_values)
+                    translated_line = translator.translate(text=modified_line[1:-1])
+                    normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
+                    if self._disable_original_line:
+                        return " ".join((key_value["key"],
+                                         key_value["value"].replace(localization_value, f'\"{normal_string}\"'),
+                                         '#NT!'))
+                    return " ".join((key_value["key"], key_value["value"], f" <\"{normal_string}\">", " #NT!"))
+                except Exception as error:
+                    error_text = f"{LanguageConstants.error_with_translation}\n{key_value['value']} {key_value['value']}\n{error}\n"
+                    logger.error(f'{error_text}')
+                    self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+                    return " ".join((key_value['key'], key_value['value'], "#Translation Error!"))
 
     @logger.catch()
     def _process_data(self):
