@@ -15,10 +15,12 @@ from loguru import logger
 from gui.dialog_window import CustomDialog
 from gui.settings_window import SettingsWindow
 from languages.language_constants import LanguageConstants
-from main import Prepper, ModernParadoxGamesPerformer, Settings
+from main import Prepper, ModernParadoxGamesPerformer, Settings, TranslatorAccount
 from gui.window_ui.MainWindow import Ui_MainWindow
 import ctypes
 import qtawesome as qta
+
+from translators.translator_manager import TranslatorManager
 
 BASE_DIR = Path.cwd().parent
 TRANSLATIONS_DIR = BASE_DIR / 'languages'
@@ -47,13 +49,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init_menubar()
         self.__init_languages_dict()
         self.setWindowIcon(QtGui.QIcon(str(BASE_DIR / 'icons/main icon.jpg')))
+
         self.__running_thread = None
+        self.__translator: TranslatorManager
 
         self.__ui.run_pushButton.setEnabled(False)
 
-        for language in self.__languages_dict.get(self.__settings.get_translator_api()).keys():
-            self.__ui.selector_original_language_comboBox.addItem(language)
-            self.__ui.selector_target_language_comboBox.addItem(language)
         self.__ui.selector_original_language_comboBox.setCurrentText('english')
         self.__ui.selector_target_language_comboBox.setCurrentText('russian')
 
@@ -83,6 +84,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__prepper = Prepper()
         self.__performer: ModernParadoxGamesPerformer | None = None
 
+        self.__init_translator()
+        self.__init_available_languages()
         self.__preset_values()
         self.__check_readiness()
 
@@ -102,10 +105,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if (HOME_DIR / 'Documents').exists():
             local_data_path = (HOME_DIR / 'Documents' / 'ModTranslationHelper')
             self.__settings = Settings(local_data_path)
+            self.__translator_accounts = TranslatorAccount(local_path=local_data_path)
         else:
             logger.warning(f'{HOME_DIR} / Documents - not exists')
             local_data_path = BASE_DIR / 'Settings'
             self.__settings = Settings(local_data_path)
+            self.__translator_accounts = TranslatorAccount(local_path=local_data_path)
             self.__init_languages()
             error = CustomDialog(parent=self.__ui.centralwidget, text=LanguageConstants.error_settings_file_not_exist,
                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
@@ -121,10 +126,8 @@ class MainWindow(QtWidgets.QMainWindow):
     @logger.catch()
     def __init_menubar(self):
         def open_settings():
-            settings = SettingsWindow(parent=self, settings=self.__settings)
+            settings = SettingsWindow(parent=self, settings=self.__settings, account_data=self.__translator_accounts)
             settings.exec_()
-            self.__ui.program_language_comboBox.setCurrentText(self.__settings.get_app_language())
-            self.__change_language()
 
         menu = QtWidgets.QMenuBar()
         main_menu = QtWidgets.QMenu(LanguageConstants.menu, self)
@@ -142,6 +145,24 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__languages_dict = json.load(language_dict)
 
     @logger.catch()
+    def __init_translator(self):
+        translator_name = self.__settings.get_translator_api()
+        translator_account = self.__translator_accounts.get_translator_account(translator_name)
+        self.__translator = TranslatorManager(source_language=self.__settings.get_last_original_language(),
+                                              target_language=self.__settings.get_last_target_language(),
+                                              api_service=translator_name,
+                                              api_key=translator_account.get('api_key')
+                                              )
+
+    @logger.catch()
+    def __init_available_languages(self):
+        self.__ui.selector_original_language_comboBox.clear()
+        self.__ui.selector_target_language_comboBox.clear()
+        self.__ui.selector_original_language_comboBox.addItems(self.__translator.get_supported_languages())
+        self.__ui.selector_target_language_comboBox.addItems((self.__translator.get_supported_languages()))
+
+
+    @logger.catch()
     def __preset_values(self):
         last_game_path = self.__settings.get_last_game_directory()
         last_original_path = self.__settings.get_last_original_mode_directory()
@@ -156,14 +177,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.setText(last_previous_path)
         self.__ui.target_directory_lineEdit.setText(last_target_path)
 
-        self.__ui.selector_original_language_comboBox.setCurrentText(last_original_language)
-        self.__ui.selector_target_language_comboBox.setCurrentText(last_target_language)
+        if last_original_language in self.__translator.get_supported_languages():
+            self.__ui.selector_original_language_comboBox.setCurrentText(last_original_language)
+        if last_target_language in self.__translator.get_supported_languages():
+            self.__ui.selector_target_language_comboBox.setCurrentText(last_target_language)
 
         self.__game_directory_changed()
         self.__original_directory_changed()
         self.__previous_directory_changed()
         self.__target_directory_changed()
 
+    @logger.catch()
     def __change_language(self):
         def set_translators():
             for _translator in self.__translators:
@@ -215,6 +239,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.game_directory_lineEdit.setText(chosen_path)
         self.__game_directory_changed()
 
+    @logger.catch()
     def __game_directory_changed(self):
         self.__prepper.set_game_path(self.__ui.game_directory_lineEdit.text())
         if not self.__prepper.get_game_path_validate_result():
@@ -229,6 +254,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__settings.set_last_game_directory(self.__prepper.get_game_path())
         self.__check_readiness()
 
+    @logger.catch()
     def __open_game_directory(self):
         if self.__prepper.get_game_path_validate_result():
             os.startfile(self.__prepper.get_game_path())
@@ -237,16 +263,18 @@ class MainWindow(QtWidgets.QMainWindow):
                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
+    @logger.catch()
     def __select_original_directory(self):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_original_mode_directory())
         self.__ui.original_directory_lineEdit.setText(chosen_path)
         self.__original_directory_changed()
 
+    @logger.catch()
     def __original_directory_changed(self):
         self.__prepper.set_original_mode_path(
             original_mode_path=self.__ui.original_directory_lineEdit.text(),
-            original_language=self.__languages_dict['GoogleTranslator'].get(
+            original_language=self.__languages_dict[self.__settings.get_translator_api()].get(
                 self.__ui.selector_original_language_comboBox.currentText(), None)
         )
         if not self.__prepper.get_original_mode_path_validate_result():
@@ -276,6 +304,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.setText(chosen_path)
         self.__previous_directory_changed()
 
+    @logger.catch()
     def __previous_directory_changed(self):
         self.__prepper.set_previous_path(previous_path=self.__ui.previous_directory_lineEdit.text(),
                                          target_language=self.__ui.selector_target_language_comboBox.currentText())
@@ -306,6 +335,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.target_directory_lineEdit.setText(chosen_path)
         self.__target_directory_changed()
 
+    @logger.catch()
     def __target_directory_changed(self):
         self.__prepper.set_target_path(self.__ui.target_directory_lineEdit.text())
         if not self.__prepper.get_target_path_validate_result():
@@ -434,6 +464,8 @@ class MainWindow(QtWidgets.QMainWindow):
         super(MainWindow, self).moveEvent(a0)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        self.__settings.set_last_languages(original=self.__ui.selector_original_language_comboBox.currentText(),
+                                           target=self.__ui.selector_target_language_comboBox.currentText())
         self.__settings.save_settings_data()
         super(MainWindow, self).closeEvent(a0)
 
@@ -447,6 +479,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.progressBar.setValue(0)
         self.__performer = ModernParadoxGamesPerformer(
             paths=self.__prepper,
+            translator=self.__translator,
             original_language=self.__ui.selector_original_language_comboBox.currentText(),
             target_language=self.__ui.selector_target_language_comboBox.currentText(),
             languages_dict=self.__languages_dict.get(self.__settings.get_translator_api()),
