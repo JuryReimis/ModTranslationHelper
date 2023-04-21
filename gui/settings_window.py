@@ -1,25 +1,44 @@
 from PyQt5 import QtWidgets
 from loguru import logger
 
-from main import Settings
+from gui.add_account_data_window import AddAccountDataWindow
+from main import Settings, TranslatorAccount
 from window_ui.SettingsWindow import Ui_Settings
 
 
 class SettingsWindow(QtWidgets.QDialog):
     @logger.catch()
-    def __init__(self, parent=None, settings: Settings = None):
+    def __init__(self, parent=None, settings: Settings = None, account_data: TranslatorAccount = None):
         super(SettingsWindow, self).__init__(parent)
         self.__ui = Ui_Settings()
         self.__ui.setupUi(self)
 
         self.__settings = settings
+        self.__account_data = account_data
         self.__set_initial_values()
 
+        self.__ui.apis_comboBox.currentTextChanged.connect(self.__change_current_api)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
 
     @logger.catch()
     def __set_initial_values(self):
-        self.__ui.apis_comboBox.addItems(self.__settings.available_apis.keys())
+        self.__ui.apis_comboBox.addItems(self.__settings.get_translator_apis())
+        self.__ui.apis_comboBox.setCurrentText(self.__settings.get_translator_api())
+
+    @logger.catch()
+    def __change_current_api(self, selected_api):
+        self.__settings.set_translator_api(selected_api)
+        match selected_api:
+            case 'YandexTranslator' | 'DeepLTranslator':
+                add_account_data = AddAccountDataWindow(parent=self,
+                                                        title=f'{selected_api} Api Key',
+                                                        api_name=selected_api,
+                                                        account_data=self.__account_data)
+                add_account_data.exec_()
+
+    def set_default(self):
+        self.__ui.apis_comboBox.setCurrentText('GoogleTranslator')
+        self.__settings.set_translator_api('GoogleTranslator')
 
     def save_settings(self):
         self.__settings.save_settings_data()
