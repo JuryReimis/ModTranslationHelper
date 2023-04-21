@@ -56,6 +56,7 @@ class AddAccountDataWindow(QtWidgets.QDialog):
                 self.__key_validation = False
                 error = CustomDialog(text='Введите ключ!')
                 error.exec_()
+                self.__key_validation = False
         except ServerException as error:
             logger.warning(f'{error}')
             self.__key_validation = False
@@ -70,5 +71,6 @@ class AddAccountDataWindow(QtWidgets.QDialog):
         self.close()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        self.parent().set_default()
+        if not self.__key_validation:
+            self.parent().set_default()
         super(AddAccountDataWindow, self).closeEvent(a0)
