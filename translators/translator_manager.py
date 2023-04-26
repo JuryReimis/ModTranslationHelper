@@ -3,6 +3,12 @@ from deep_translator import GoogleTranslator, DeepL, YandexTranslator
 
 class TranslatorManager:
 
+    supported_apis = [
+        "GoogleTranslator",
+        "YandexTranslator",
+        "DeepLTranslator"
+    ]
+
     def __init__(
             self,
             source_language='english',
@@ -52,14 +58,3 @@ class TranslatorManager:
                 return self._translator.translate(text)
             case _:
                 return self._translator.translate(text)
-
-    @classmethod
-    def get_available_apis(cls):
-        apis = [
-            'GoogleTranslator',
-            'DeepLTranslator',
-            'YandexTranslator',
-        ]
-        return apis
-
-
