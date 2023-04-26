@@ -12,6 +12,7 @@ from PyQt5.QtCore import pyqtSlot, QSize
 from PyQt5.QtWidgets import QLabel
 from loguru import logger
 
+from settings import BASE_DIR, HOME_DIR, TRANSLATIONS_DIR, SCREEN_SIZE, PROGRAM_VERSION
 from gui.dialog_window import CustomDialog
 from gui.settings_window import SettingsWindow
 from languages.language_constants import LanguageConstants
@@ -21,12 +22,6 @@ import ctypes
 import qtawesome as qta
 
 from translators.translator_manager import TranslatorManager
-
-BASE_DIR = Path.cwd().parent
-TRANSLATIONS_DIR = BASE_DIR / 'languages'
-HOME_DIR = Path.home()
-
-PROGRAM_VERSION = '1.4.0 beta'
 
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
@@ -46,8 +41,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init_settings()
         self.__init_app_position()
         self.__init_languages()
+        self.__init_game()
+        self.__init_game_languages()
         self.__init_menubar()
-        self.__init_languages_dict()
         self.setWindowIcon(QtGui.QIcon(str(BASE_DIR / 'icons/main icon.jpg')))
 
         self.__running_thread = None
@@ -67,6 +63,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.target_directory_pushButton.clicked.connect(self.__select_target_directory)
         self.__ui.target_directory_open_pushButton.clicked.connect(self.__open_target_directory)
         self.__ui.need_translation_checkBox.stateChanged.connect(self.__need_translate_changed)
+        self.__ui.update_need_translation_area_pushButton.clicked.connect(self.update_need_translation_area)
         self.__ui.check_all_pushButton.clicked.connect(self.__check_all_checkboxes)
         self.__ui.uncheck_all_pushButton.clicked.connect(self.__unchecked_all_checkboxes)
         self.__ui.run_pushButton.clicked.connect(self.__run)
@@ -77,6 +74,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
+
+        self.__ui.select_game_comboBox.currentTextChanged.connect(self.__game_changed)
+        self.__ui.selector_game_supported_source_language_comboBox.currentTextChanged.connect(
+            self.__supported_source_language_changed)
+        self.__ui.selector_game_supported_target_language_comboBox.currentTextChanged.connect(
+            self.__supported_target_language_changed)
+
         self.__ui.program_language_comboBox.currentTextChanged.connect(self.__change_language)
 
         self.__ui.disable_original_line_checkBox.stateChanged.connect(self.__show_warning)
@@ -99,6 +103,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.program_language_comboBox.addItems(languages_list)
         self.__ui.program_language_comboBox.setCurrentText(self.__settings.get_app_language())
         self.__change_language()
+
+    @logger.catch()
+    def __init_game(self):
+        games = self.__settings.get_games()
+        self.__ui.select_game_comboBox.clear()
+        self.__ui.select_game_comboBox.addItems(games)
+        self.__ui.select_game_comboBox.setCurrentText(self.__settings.get_selected_game())
+
+    @logger.catch()
+    def __init_game_languages(self):
+        self.__ui.selector_game_supported_source_language_comboBox.clear()
+        self.__ui.selector_game_supported_target_language_comboBox.clear()
+        supported_languages = self.__settings.get_game_languages(self.__settings.get_selected_game())
+        self.__ui.selector_game_supported_source_language_comboBox.addItems(supported_languages)
+        self.__ui.selector_game_supported_source_language_comboBox.setCurrentText(
+            self.__settings.get_last_supported_source_language())
+        self.__ui.selector_game_supported_target_language_comboBox.addItems(supported_languages)
+        self.__ui.selector_game_supported_target_language_comboBox.setCurrentText(
+            self.__settings.get_last_supported_target_language())
 
     @logger.catch()
     def __init_settings(self):
@@ -140,11 +163,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setMenuBar(menu)
 
     @logger.catch()
-    def __init_languages_dict(self):
-        with (BASE_DIR / 'language_names.json').open(mode='r') as language_dict:
-            self.__languages_dict = json.load(language_dict)
-
-    @logger.catch()
     def __init_translator(self):
         translator_name = self.__settings.get_translator_api()
         translator_account = self.__translator_accounts.get_translator_account(translator_name)
@@ -160,7 +178,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.selector_target_language_comboBox.clear()
         self.__ui.selector_original_language_comboBox.addItems(self.__translator.get_supported_languages())
         self.__ui.selector_target_language_comboBox.addItems((self.__translator.get_supported_languages()))
-
 
     @logger.catch()
     def __preset_values(self):
@@ -188,7 +205,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__target_directory_changed()
 
     @logger.catch()
-    def __change_language(self):
+    def __change_language(self, *args, **kwargs):
         def set_translators():
             for _translator in self.__translators:
                 app.installTranslator(_translator)
@@ -226,6 +243,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__ui.target_directory_horizontalLayout: LanguageConstants.target_directory_help,
             self.__ui.need_translation_horizontalLayout: LanguageConstants.need_translation_help,
             self.__ui.disable_original_line_horizontalLayout: LanguageConstants.disable_original_line_help,
+            self.__ui.supported_source_language_horizontalLayout: LanguageConstants.choice_supported_source_language_help,
+            self.__ui.supported_target_language_horizontalLayout: LanguageConstants.choice_supported_target_language_help,
         }
         self.info_layouts = layouts
 
@@ -233,7 +252,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__init_info_layouts()
         AddInfoIcons(self.info_layouts)
 
-    def __select_game_directory(self):
+    def __select_game_directory(self, *args, **kwargs):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_game_directory())
         self.__ui.game_directory_lineEdit.setText(chosen_path)
@@ -264,7 +283,7 @@ class MainWindow(QtWidgets.QMainWindow):
             error.show_path_error()
 
     @logger.catch()
-    def __select_original_directory(self):
+    def __select_original_directory(self, *args, **kwargs):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_original_mode_directory())
         self.__ui.original_directory_lineEdit.setText(chosen_path)
@@ -274,13 +293,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def __original_directory_changed(self):
         self.__prepper.set_original_mode_path(
             original_mode_path=self.__ui.original_directory_lineEdit.text(),
-            original_language=self.__languages_dict[self.__settings.get_translator_api()].get(
-                self.__ui.selector_original_language_comboBox.currentText(), None)
-        )
+            original_language=self.__settings.get_last_supported_source_language())
         if not self.__prepper.get_original_mode_path_validate_result():
             if str(self.__prepper.get_original_mode_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{self.__prepper.get_original_mode_path() / self.__ui.selector_original_language_comboBox.currentText()} -'
+                                     text=f'{self.__prepper.get_original_mode_path() / self.__settings.get_last_supported_source_language()} -'
                                           f' {LanguageConstants.error_folder_does_not_exist}',
                                      icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
@@ -298,7 +315,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
-    def __select_previous_directory(self):
+    def __select_previous_directory(self, *args, **kwargs):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_previous_directory())
         self.__ui.previous_directory_lineEdit.setText(chosen_path)
@@ -307,12 +324,12 @@ class MainWindow(QtWidgets.QMainWindow):
     @logger.catch()
     def __previous_directory_changed(self):
         self.__prepper.set_previous_path(previous_path=self.__ui.previous_directory_lineEdit.text(),
-                                         target_language=self.__ui.selector_target_language_comboBox.currentText())
+                                         target_language=self.__settings.get_last_supported_target_language())
         if not self.__prepper.get_previous_path_validate_result():
             self.__ui.previous_directory_lineEdit.clear()
             if str(self.__prepper.get_previous_path()) != '.':
                 error = CustomDialog(parent=self.__ui.centralwidget,
-                                     text=f'{self.__prepper.get_previous_path() / self.__ui.selector_target_language_comboBox.currentText()} - '
+                                     text=f'{self.__prepper.get_previous_path() / self.__settings.get_last_supported_target_language()} - '
                                           f'{LanguageConstants.error_folder_does_not_exist}',
                                      icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
                 error.show()
@@ -329,7 +346,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
-    def __select_target_directory(self):
+    def __select_target_directory(self, *args, **kwargs):
         chosen_path = QtWidgets.QFileDialog.getExistingDirectory(caption='Get Path',
                                                                  directory=self.__settings.get_last_target_directory())
         self.__ui.target_directory_lineEdit.setText(chosen_path)
@@ -357,6 +374,21 @@ class MainWindow(QtWidgets.QMainWindow):
                                  icon_path=str(BASE_DIR / 'icons/error icon.jpg'))
             error.show_path_error()
 
+    def __game_changed(self):
+        self.__settings.set_selected_game(self.__ui.select_game_comboBox.currentText())
+        self.__init_game_languages()
+
+    def __supported_source_language_changed(self):
+        if self.__ui.selector_game_supported_source_language_comboBox:
+            self.__settings.set_last_supported_source_language(
+                self.__ui.selector_game_supported_source_language_comboBox.currentText())
+        self.__original_directory_changed()
+
+    def __supported_target_language_changed(self):
+        self.__settings.set_last_supported_target_language(
+            target=self.__ui.selector_game_supported_target_language_comboBox.currentText())
+        self.__previous_directory_changed()
+
     def __original_language_changed(self):
         if self.__ui.original_directory_lineEdit.text():
             self.__original_directory_changed()
@@ -367,6 +399,11 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__ui.need_translate_scrollArea.setEnabled(False)
 
+    def update_need_translation_area(self, *args):
+        self.__prepper.set_original_mode_path(original_mode_path=self.__ui.original_directory_lineEdit.text(),
+                                              original_language=self.__settings.get_last_supported_source_language())
+        self.__form_checkbox_cascade()
+
     @logger.catch()
     def __check_readiness(self):
         if self.__prepper.get_original_mode_path_validate_result() and self.__prepper.get_game_path_validate_result() \
@@ -376,7 +413,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.__ui.run_pushButton.setEnabled(False)
 
     @logger.catch()
-    def __form_checkbox_cascade(self):
+    def __form_checkbox_cascade(self, *args):
         files = self.__prepper.get_file_hierarchy()
         vertical_layout_widget = QtWidgets.QWidget()
         vertical_layout = QtWidgets.QVBoxLayout(vertical_layout_widget)
@@ -480,9 +517,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__performer = ModernParadoxGamesPerformer(
             paths=self.__prepper,
             translator=self.__translator,
-            original_language=self.__ui.selector_original_language_comboBox.currentText(),
-            target_language=self.__ui.selector_target_language_comboBox.currentText(),
-            languages_dict=self.__languages_dict.get(self.__settings.get_translator_api()),
+            original_language=self.__settings.get_last_supported_source_language(),
+            target_language=self.__settings.get_last_supported_target_language(),
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes(),
             disable_original_line=self.__ui.disable_original_line_checkBox.isChecked(),
@@ -545,6 +581,7 @@ class ResizeWindow:
         'donate_pushButton': 14,
         'game_directory_info_label': 8,
         'change_program_language_label': 14,
+        'select_game_label': 14,
         'need_translation_info_label': 8,
         'need_translation_info_label_2': 8,
         'original_directory_info_label': 8,
