@@ -1,0 +1,7 @@
+{
+  "Crusader Kings 3": ["english", "french", "german", "korean", "russian", "simp_chinase", "spanish"],
+  "Hearts of Iron 4": [ "english", "braz_por", "french", "german", "japanese", "polish", "russian", "spanish"],
+  "Victoria 3": ["english", "braz_por", "french", "german", "japanese", "korean", "polish", "russian", "simp_chinese", "spanish", "turkish"],
+  "Stellaris": ["english", "braz_por", "french", "german", "japanese", "korean", "polish", "russian", "simp_chinese", "spanish"],
+  "Europa Universalis 4": ["english", "french", "german", "spanish"]
+}
