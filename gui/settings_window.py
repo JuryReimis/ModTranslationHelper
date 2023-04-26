@@ -3,6 +3,7 @@ from loguru import logger
 
 from gui.add_account_data_window import AddAccountDataWindow
 from main import Settings, TranslatorAccount
+from translators.translator_manager import TranslatorManager
 from window_ui.SettingsWindow import Ui_Settings
 
 
@@ -22,7 +23,7 @@ class SettingsWindow(QtWidgets.QDialog):
 
     @logger.catch()
     def __set_initial_values(self):
-        self.__ui.apis_comboBox.addItems(self.__settings.get_translator_apis())
+        self.__ui.apis_comboBox.addItems(TranslatorManager.supported_apis)
         self.__ui.apis_comboBox.setCurrentText(self.__settings.get_translator_api())
 
     @logger.catch()
