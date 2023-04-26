@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 import re
 import time
+from typing import KeysView
+
 from PyQt5.QtCore import QObject, pyqtSignal
 from deep_translator import GoogleTranslator
 
@@ -10,6 +12,7 @@ from languages.language_constants import LanguageConstants
 from loguru import logger
 
 from parsers.modern_paradox_parser import ModernParadoxParser
+from settings import BASE_DIR
 from shielded_values import ShieldedValues
 from translators.translator_manager import TranslatorManager
 
@@ -179,12 +182,16 @@ class Settings:
         'last_original_mode_directory': "",
         'last_previous_directory': "",
         'last_target_directory': "",
+        'last_supported_source_language': 'english',
+        'last_supported_target_language': 'english',
         'last_original_language': "english",
         'last_target_language': "russian",
 
         'translator_api': "GoogleTranslator",
 
         'app_language': "Русский",
+        'games': {},
+        'selected_game': 'Crusader Kings 3',
         'app_size': [1300, 700],
         'app_position': [100, 50],
     }
@@ -204,14 +211,25 @@ class Settings:
         else:
             logger.warning(f'settings storage: {local_data_path}: not exists')
 
-    @staticmethod
-    def get_translator_apis():
-        _ = [
-            'GoogleTranslator',
-            'DeepLTranslator',
-            'YandexTranslator',
-        ]
-        return _
+        self.__init_games()
+
+    @logger.catch()
+    def __init_games(self):
+        game_supported_languages = BASE_DIR / 'game_supported_languages.json'
+        with game_supported_languages.open(mode='r', encoding='utf-8-sig') as file:
+            self.__settings['games'] = json.load(file)
+
+    def get_games(self) -> KeysView:
+        return self.__settings.get('games').keys()
+
+    def set_selected_game(self, game: str):
+        self.__settings['selected_game'] = game
+
+    def get_selected_game(self):
+        return self.__settings.get('selected_game')
+
+    def get_game_languages(self, game: str):
+        return self.__settings.get('games').get(game, [])
 
     def set_last_game_directory(self, value: Path):
         self.__settings['last_game_directory'] = str(value)
@@ -241,6 +259,12 @@ class Settings:
         self.__settings['last_original_language'] = original
         self.__settings['last_target_language'] = target
 
+    def set_last_supported_source_language(self, source):
+        self.__settings['last_supported_source_language'] = source
+
+    def set_last_supported_target_language(self, target):
+        self.__settings['last_supported_target_language'] = target
+
     def set_translator_api(self, translator_api):
         self.__settings['translator_api'] = translator_api
 
@@ -258,6 +282,12 @@ class Settings:
 
     def get_last_target_language(self):
         return self.__settings.get('last_target_language', 'russian')
+
+    def get_last_supported_source_language(self):
+        return self.__settings.get('last_supported_source_language', 'english')
+
+    def get_last_supported_target_language(self):
+        return self.__settings.get('last_supported_target_language', 'english')
 
     def get_translator_api(self):
         return self.__settings.get('translator_api', None)
@@ -312,15 +342,14 @@ class BasePerformer(QObject):
             translator: TranslatorManager = None,
             original_language: str = None,
             target_language: str = None,
-            languages_dict: dict = None,
             need_translate: bool = False,
             need_translate_tuple: tuple | None = None,
             disable_original_line: bool = False
     ):
         super(BasePerformer, self).__init__()
         self._paths = paths
-        self._original_language = languages_dict.get(original_language, None)
-        self._target_language = languages_dict.get(target_language, None)
+        self._original_language = original_language
+        self._target_language = target_language
         self._translator = translator
         self._need_translate_list = need_translate_tuple if need_translate is True else tuple()
         self._disable_original_line = disable_original_line
