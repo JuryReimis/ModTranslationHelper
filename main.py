@@ -450,13 +450,12 @@ class BasePerformer(QObject):
                 if regular_groups:
                     for step in regular_groups:
                         self._modified_values[shadow_number] = step
-                        line = line.replace(step, f"PROTARG_{shadow_number}")
+                        line = line.replace(step, f"§_{shadow_number}")
                         shadow_number += 1
                 return line
             case "return_normal_view":
                 for key, value in self._modified_values.items():
-                    line = line.replace(f'PROTARG_{key}', value)
-                    line = line.replace(f'ПРОТАРГ_{key}', value)
+                    line = line.replace(f'§_{key}', value)
                 return line
             case _:
                 self.info_console_value(LanguageConstants.error_with_modification)
@@ -521,10 +520,10 @@ class ModernParadoxGamesPerformer(BasePerformer):
         target_vanilla_path = self._paths.get_game_path() / self._target_language
         for file in original_vanilla_path.rglob('*'):
             lines_dictionary = ModernParadoxParser(filename=file).parse_file()
-            self._original_vanilla_dictionary | dict(lines_dictionary)
+            self._original_vanilla_dictionary |= dict(lines_dictionary)
         for file in target_vanilla_path.rglob('*'):
             lines_dictionary = ModernParadoxParser(filename=file).parse_file()
-            self._target_vanilla_dictionary | dict(lines_dictionary)
+            self._target_vanilla_dictionary |= dict(lines_dictionary)
 
     @logger.catch()
     def _create_previous_version_dictionary(self):
@@ -532,10 +531,9 @@ class ModernParadoxGamesPerformer(BasePerformer):
                                      f' {self._calculate_time_delta()}\n')
         self.info_label_value.emit(LanguageConstants.previous_localization_processing)
         self._previous_version_dictionary = {"lang": "l_" + self._target_language + ":\n"}
-        print(self._paths.get_previous_files(target_language=self._target_language))
         for file in self._paths.get_previous_files(target_language=self._target_language):
             file: Path
-            self._previous_version_dictionary | dict(ModernParadoxParser(filename=file).parse_file())
+            self._previous_version_dictionary |= dict(ModernParadoxParser(filename=file).parse_file())
 
     @logger.catch()
     def _create_translated_list(self, line_number: int, key_value: dict):
