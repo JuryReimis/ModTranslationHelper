@@ -4,7 +4,7 @@ from loguru import logger
 from gui.add_account_data_window import AddAccountDataWindow
 from main import Settings, TranslatorAccount
 from translators.translator_manager import TranslatorManager
-from window_ui.SettingsWindow import Ui_Settings
+from gui.window_ui.SettingsWindow import Ui_Settings
 
 
 class SettingsWindow(QtWidgets.QDialog):
@@ -36,6 +36,7 @@ class SettingsWindow(QtWidgets.QDialog):
                                                         api_name=selected_api,
                                                         account_data=self.__account_data)
                 add_account_data.exec_()
+        self.parent().translator_api_changed()
 
     def set_default(self):
         self.__ui.apis_comboBox.setCurrentText('GoogleTranslator')
