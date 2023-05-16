@@ -1,4 +1,3 @@
-import json
 import math
 import os
 import webbrowser
@@ -74,6 +73,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
         self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
+        self.__ui.selector_target_language_comboBox.currentTextChanged.connect(self.__target_language_changed)
 
         self.__ui.select_game_comboBox.currentTextChanged.connect(self.__game_changed)
         self.__ui.selector_game_supported_source_language_comboBox.currentTextChanged.connect(
@@ -171,6 +171,19 @@ class MainWindow(QtWidgets.QMainWindow):
                                               api_service=translator_name,
                                               api_key=translator_account.get('api_key')
                                               )
+
+    @logger.catch()
+    def translator_api_changed(self):
+        self.__translator.set_new_api_service(api_service=self.__settings.get_translator_api(),
+                                              api_key=self.__translator_accounts.get_translator_account(
+                                                  self.__settings.get_translator_api()))
+        self.__ui.selector_original_language_comboBox.clear()
+        self.__ui.selector_target_language_comboBox.clear()
+        languages = self.__translator.get_supported_languages()
+        self.__ui.selector_original_language_comboBox.addItems(languages)
+        self.__ui.selector_target_language_comboBox.addItems(languages)
+        self.__ui.selector_original_language_comboBox.setCurrentText(self.__settings.get_last_original_language())
+        self.__ui.selector_target_language_comboBox.setCurrentText(self.__settings.get_last_target_language())
 
     @logger.catch()
     def __init_available_languages(self):
@@ -389,9 +402,11 @@ class MainWindow(QtWidgets.QMainWindow):
             target=self.__ui.selector_game_supported_target_language_comboBox.currentText())
         self.__previous_directory_changed()
 
-    def __original_language_changed(self):
-        if self.__ui.original_directory_lineEdit.text():
-            self.__original_directory_changed()
+    def __original_language_changed(self, *args, **kwargs):
+        self.__translator.set_new_source_language(self.__ui.selector_original_language_comboBox.currentText())
+
+    def __target_language_changed(self):
+        self.__translator.set_new_target_language(self.__ui.selector_target_language_comboBox.currentText())
 
     def __need_translate_changed(self):
         if self.__ui.need_translation_checkBox.isChecked():
@@ -651,10 +666,16 @@ class ResizeWindow:
             self.main_window.resize(int(self.new_width), int(self.new_height))
 
 
-if __name__ == '__main__':
+def run():
+    global SCREEN_SIZE
+    global app
     app = QtWidgets.QApplication([])
     SCREEN_SIZE = app.primaryScreen().size()
     application = MainWindow()
     application.show()
 
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    run()
