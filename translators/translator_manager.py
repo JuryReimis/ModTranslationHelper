@@ -1,4 +1,6 @@
 from deep_translator import GoogleTranslator, DeepL, YandexTranslator
+from deep_translator.exceptions import InvalidSourceOrTargetLanguage, LanguageNotSupportedException
+from loguru import logger
 
 
 class TranslatorManager:
@@ -23,21 +25,32 @@ class TranslatorManager:
 
         self._init_translator_obj()
 
+    @logger.catch()
     def _init_translator_obj(self):
-        match self._api_service:
-            case 'GoogleTranslator':
-                self._translator = GoogleTranslator(source=self._source_language,
-                                                    target=self._target_language)
-            case 'DeepLTranslator':
-                self._translator = DeepL(api_key=self._api_key,
-                                         source=self._source_language,
-                                         target=self._target_language)
-            case 'YandexTranslator':
-                self._translator = YandexTranslator(api_key=self._api_key,
-                                                    source=self._source_language,
-                                                    target=self._target_language)
-            case _:
-                self._translator = None
+        try:
+            match self._api_service:
+                case 'GoogleTranslator':
+                    self._translator = GoogleTranslator(source=self._source_language,
+                                                        target=self._target_language)
+                case 'DeepLTranslator':
+                    self._translator = DeepL(api_key=self._api_key,
+                                             source=self._source_language,
+                                             target=self._target_language)
+                case 'YandexTranslator':
+                    self._translator = YandexTranslator(api_key=self._api_key,
+                                                        source=self._source_language,
+                                                        target=self._target_language)
+                case _:
+                    self._translator = None
+        except InvalidSourceOrTargetLanguage:
+            logger.warning(f'Source {self._source_language} and target {self._target_language} languages is same')
+        except LanguageNotSupportedException:
+            logger.warning(f'Source {self._source_language} and target {self._target_language} not supported in {self._api_service}')
+
+    def set_new_api_service(self, api_service, api_key=None):
+        self._api_service = api_service
+        self._api_key = api_key
+        self._init_translator_obj()
 
     def set_new_source_language(self, new_source: str):
         self._source_language = new_source
