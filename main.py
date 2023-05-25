@@ -7,6 +7,7 @@ from typing import KeysView
 from PyQt5.QtCore import QObject, pyqtSignal
 from deep_translator import GoogleTranslator
 
+from info_data import InfoData, FileInfoData
 from languages.language_constants import LanguageConstants
 
 from loguru import logger
@@ -330,10 +331,13 @@ class TranslatorAccount:
 
 
 class BasePerformer(QObject):
+    info_data: InfoData
+    file_info_data: FileInfoData
+
     info_console_value = pyqtSignal(str)
     info_label_value = pyqtSignal(str)
     progress_bar_value = pyqtSignal(float)
-    finish_thread = pyqtSignal()
+    finish_thread = pyqtSignal(InfoData)
 
     @logger.catch()
     def __init__(
@@ -367,8 +371,9 @@ class BasePerformer(QObject):
         self._translated_list = []
 
     @logger.catch()
-    def _calculate_time_delta(self) -> str:
-        start_time = self._start_running_time
+    def _calculate_time_delta(self, start_time: float = None) -> str:
+        if not start_time:
+            start_time = self._start_running_time
         current_time = time.time()
         delta = current_time - start_time
         return time.strftime('%H:%M:%S', time.gmtime(delta))
@@ -488,7 +493,7 @@ class BasePerformer(QObject):
         info = f"{LanguageConstants.final_time} {self._calculate_time_delta()}"
         self.info_console_value.emit(self._change_text_style(info, 'orange'))
         self.info_label_value.emit(LanguageConstants.final)
-        self.finish_thread.emit()
+        self.finish_thread.emit(self.info_data)
 
 
 class ModernParadoxGamesPerformer(BasePerformer):
@@ -536,16 +541,16 @@ class ModernParadoxGamesPerformer(BasePerformer):
             self._previous_version_dictionary |= dict(ModernParadoxParser(filename=file).parse_file())
 
     @logger.catch()
-    def _create_translated_list(self, line_number: int, key_value: dict):
-        if line_number == 0:
+    def _create_translated_list(self, key_value: dict):
+        if self._current_line_number == 0:
             self._translated_list[0] = "l_" + self._target_language + ":\n"
         else:
             match self._paths.get_previous_path_validate_result():
                 case True:
-                    self._translated_list[line_number] = " " * self._default_padding \
+                    self._translated_list[self._current_line_number] = " " * self._default_padding \
                                                          + self._compare_with_previous(key_value=key_value) + "\n"
                 case False:
-                    self._translated_list[line_number] = " " * self._default_padding \
+                    self._translated_list[self._current_line_number] = " " * self._default_padding \
                                                          + self._compare_with_vanilla(key_value=key_value) + "\n"
 
     @logger.catch()
@@ -558,6 +563,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
             logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
             return self._compare_with_vanilla(key_value=key_value)
         else:
+            self.file_info_data.add_line_from_previous_version(self._current_line_number)
             return " ".join((key_value['key'], previous_line))
 
     @logger.catch()
@@ -569,6 +575,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
         if original_vanilla_value is not None and target_vanilla_value is not None:
             if original_vanilla_value == key_value["value"]:
                 logger.debug(f'Return vanilla value')
+                self.file_info_data.add_line_from_vanilla_loc(self._current_line_number)
                 return " ".join((key_value["key"], target_vanilla_value))
         if key_value["value"] in ["", None]:
             logger.debug('String is empty')
@@ -598,12 +605,15 @@ class ModernParadoxGamesPerformer(BasePerformer):
                                                       pattern=self._shielded_values)
                     translated_line = translator.translate(text=modified_line[1:-1])
                     normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
+                    self.file_info_data.add_translated_line(self._current_line_number)
+                    self.info_data.add_translated_chars(len(modified_line[1:-1]))
                     if self._disable_original_line:
                         return " ".join((key_value["key"],
                                          key_value["value"].replace(localization_value, f'\"{normal_string}\"'),
                                          '#NT!'))
                     return " ".join((key_value["key"], key_value["value"], f" <\"{normal_string}\">", " #NT!"))
                 except Exception as error:
+                    self.file_info_data.add_line_with_error(self._current_line_number)
                     error_text = f"{LanguageConstants.error_with_translation}\n{key_value['value']} {key_value['value']}\n{error}\n"
                     logger.error(f'{error_text}')
                     self.info_console_value.emit(self._change_text_style(error_text, 'red'))
@@ -613,19 +623,26 @@ class ModernParadoxGamesPerformer(BasePerformer):
     def _process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self._calculate_time_delta()}\n')
+        self.info_data = InfoData()
         for file in self._paths.get_file_hierarchy():
+            start_time = time.time()
+
             logger.info(f'Started file {file}')
             self._current_process_file = file
             original_file_full_path = self._paths.get_original_mode_path() / file
             changed_file_full_path = self._paths.get_target_path() / str(file).replace(self._original_language,
                                                                                        self._target_language)
+            self.file_info_data = FileInfoData(filename=changed_file_full_path)
             with changed_file_full_path.open(mode='w', encoding='utf-8-sig') as target_file:
                 info = f"{LanguageConstants.file_opened} {file} - {self._calculate_time_delta()}\n"
                 self.info_console_value.emit(info)
+
                 self._create_original_language_dictionary(original_file_full_path)
                 amount_lines = len(self._original_language_dictionary)
+                self.file_info_data.set_lines_in_files(amount_lines)
                 for line_number, key_value in self._original_language_dictionary.items():
-                    self._create_translated_list(line_number=line_number, key_value=key_value)
+                    self._current_line_number = line_number
+                    self._create_translated_list(key_value=key_value)
                     info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
                            f"{LanguageConstants.of_file} {str(original_file_full_path.name)}"
                     self.info_label_value.emit(info)
@@ -633,3 +650,6 @@ class ModernParadoxGamesPerformer(BasePerformer):
                                                  amount_lines /
                                                  self._paths.get_original_files_size())
                 print(*self._translated_list, file=target_file, sep='', end='')
+            self.file_info_data.set_process_time(self._calculate_time_delta(start_time=start_time))
+            self.info_data.add_file_info(self.file_info_data)
+            self.info_data.add_translated_files()
