@@ -11,6 +11,8 @@ from PyQt5.QtCore import pyqtSlot, QSize
 from PyQt5.QtWidgets import QLabel
 from loguru import logger
 
+from gui.stat_table_window import StatTableWindow
+from info_data import InfoData
 from settings import BASE_DIR, HOME_DIR, TRANSLATIONS_DIR, SCREEN_SIZE, PROGRAM_VERSION
 from gui.dialog_window import CustomDialog
 from gui.settings_window import SettingsWindow
@@ -491,9 +493,12 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.__ui.progressBar.setValue(math.ceil(value))
 
-    @pyqtSlot()
-    def stop_thread(self):
+    @pyqtSlot(InfoData)
+    def stop_thread(self, data: InfoData = None):
         self.__ui.run_pushButton.setEnabled(True)
+        if data:
+            stat_tables = StatTableWindow(parent=self, data=data)
+            stat_tables.show()
         self.__running_thread.exec_()
 
     # Events:
