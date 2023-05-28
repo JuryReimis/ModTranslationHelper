@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_StatTable(object):
     def setupUi(self, StatTable):
         StatTable.setObjectName("StatTable")
-        StatTable.resize(743, 653)
+        StatTable.resize(883, 834)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -27,7 +27,7 @@ class Ui_StatTable(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 723, 602))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 863, 783))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.verticalLayout.addWidget(self.scrollArea)
@@ -45,6 +45,9 @@ class Ui_StatTable(object):
         self.save_csv_pushButton.setSizePolicy(sizePolicy)
         self.save_csv_pushButton.setObjectName("save_csv_pushButton")
         self.horizontalLayout.addWidget(self.save_csv_pushButton)
+        self.open_statements_pushButton = QtWidgets.QPushButton(StatTable)
+        self.open_statements_pushButton.setObjectName("open_statements_pushButton")
+        self.horizontalLayout.addWidget(self.open_statements_pushButton)
         self.close_pushButton = QtWidgets.QPushButton(StatTable)
         self.close_pushButton.setObjectName("close_pushButton")
         self.horizontalLayout.addWidget(self.close_pushButton)
@@ -57,4 +60,5 @@ class Ui_StatTable(object):
         _translate = QtCore.QCoreApplication.translate
         StatTable.setWindowTitle(_translate("StatTable", "Статистика"))
         self.save_csv_pushButton.setText(_translate("StatTable", "Сохранить CSV файл"))
+        self.open_statements_pushButton.setText(_translate("StatTable", "Открыть папку с отчетами"))
         self.close_pushButton.setText(_translate("StatTable", "Закрыть"))
