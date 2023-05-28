@@ -50,15 +50,20 @@ class FileInfoData:
         self.process_time['value'] = time_delta
 
     def get_file_data(self):
-        return {'title': self.title, 'expanded_data': (self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
-                self.lines_from_previous_version, self.lines_with_errors, self.process_time)}
+        return {'title': self.title,
+                'expanded_data': (self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
+                                  self.lines_from_previous_version, self.lines_with_errors, self.process_time)}
+
+    def get_file_data_for_csv(self):
+        rows = [{'name': self.title}, self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
+                self.lines_from_previous_version, self.lines_with_errors, self.process_time, {'name': ''}]
+        return rows
 
 
 class InfoData:
-    title = "General"
 
-    def __init__(self):
-
+    def __init__(self, mod_name="Mod name"):
+        self.title = mod_name
         self.translated_files = {
             'name': 'Переведено файлов',
             'value': 0
@@ -87,3 +92,9 @@ class InfoData:
 
     def get_data_for_general(self):
         return {'title': self.title, 'expanded_data': (self.translated_files, self.translated_chars, self.used_api)}
+
+    def get_data_for_csv(self):
+        rows = [{'name': self.title}, self.translated_files, self.translated_chars, {'name': ''}]
+        for file in self.files_info.values():
+            rows += file.get_file_data_for_csv()
+        return rows
