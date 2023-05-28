@@ -1,15 +1,18 @@
 import csv
 import os
 import sys
+import time
 from collections.abc import Iterable
 
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 
+import settings
 from gui.window_ui.BaseTable import Ui_table_for_stat
 from gui.window_ui.StatTableWindow import Ui_StatTable
 from PyQt5 import QtWidgets
 
 from info_data import InfoData
+from languages.language_constants import StatWindowConstants
 
 
 class BaseTable(QtWidgets.QWidget):
@@ -18,7 +21,7 @@ class BaseTable(QtWidgets.QWidget):
         self.__ui = Ui_table_for_stat()
         self.__ui.setupUi(self)
 
-        self.__ui.link_pushButton.setText('Открыть файл')
+        self.__ui.link_pushButton.setText(StatWindowConstants.open_file)
 
         self.data = data
 
@@ -54,6 +57,12 @@ class StatTableWindow(QtWidgets.QDialog):
         self.__ui.setupUi(self)
         if parent:
             self.resize(parent.size() * 0.75)
+        self.csv_directory = None
+        self.check_statements_directory()
+
+        self.__ui.save_csv_pushButton.clicked.connect(self.save_csv)
+        self.__ui.open_statements_pushButton.clicked.connect(self.open_statements_directory)
+        self.__ui.close_pushButton.clicked.connect(self.close)
 
         self.data = data
 
@@ -70,6 +79,27 @@ class StatTableWindow(QtWidgets.QDialog):
         for file in self.data.files_info.values():
             file_table = BaseTable(parent=self, data=file.get_file_data())
             self.vertical_layout.addWidget(file_table)
+
+    def check_statements_directory(self):
+        base_mth_directory = settings.HOME_DIR / 'Documents' / 'ModTranslationHelper'
+        if base_mth_directory.exists():
+            self.csv_directory = base_mth_directory / 'statements'
+        else:
+            self.csv_directory = settings.BASE_DIR / 'statements'
+        if not self.csv_directory.exists():
+            self.csv_directory.mkdir()
+
+    def save_csv(self):
+        new_csv = self.csv_directory / f'{self.data.title}_{time.strftime("%H-%M-%S_%y_%m_%d", time.localtime(time.time()))}.csv'
+        with new_csv.open(mode='w') as f:
+            row_names = ['name', 'value']
+            writer = csv.DictWriter(fieldnames=row_names, lineterminator='\r', delimiter=';', f=f)
+            for row in self.data.get_data_for_csv():
+                writer.writerow(row)
+        os.startfile(new_csv)
+
+    def open_statements_directory(self):
+        os.startfile(self.csv_directory)
 
 
 if __name__ == '__main__':
