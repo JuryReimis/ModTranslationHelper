@@ -623,7 +623,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
     def _process_data(self):
         r"""Здесь происходит процесс обработки файлов. Последовательное открытие, создание и запись"""
         self.info_console_value.emit(f'{LanguageConstants.start_file_processing} - {self._calculate_time_delta()}\n')
-        self.info_data = InfoData()
+        self.info_data = InfoData(self._paths.get_target_path().name)
         for file in self._paths.get_file_hierarchy():
             start_time = time.time()
 
