@@ -32,7 +32,7 @@ class BaseTable(QtWidgets.QWidget):
 
     def create_table(self):
         model = QStandardItemModel()
-        model.setHorizontalHeaderLabels(('Параметр', 'Результат'))
+        model.setHorizontalHeaderLabels((StatWindowConstants.name_column_param, StatWindowConstants.name_column_value))
         self.__ui.tableView.setModel(model)
         self.__ui.title_label.setText(str(self.data.get('title', {})))
         if self.general:
