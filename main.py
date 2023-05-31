@@ -561,6 +561,8 @@ class ModernParadoxGamesPerformer(BasePerformer):
             previous_line = None
         logger.debug(f'Key - Value: {key_value}')
         if previous_line is None:
+            if not key_value['value'] in ["", None]:
+                self.file_info_data.add_new_line(self._current_line_number)
             logger.debug(f'Previous is {previous_line} if line is {key_value["value"]}')
             return self._compare_with_vanilla(key_value=key_value)
         else:
