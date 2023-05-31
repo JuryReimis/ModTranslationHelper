@@ -16,7 +16,7 @@ from info_data import InfoData
 from settings import BASE_DIR, HOME_DIR, TRANSLATIONS_DIR, SCREEN_SIZE, PROGRAM_VERSION
 from gui.dialog_window import CustomDialog
 from gui.settings_window import SettingsWindow
-from languages.language_constants import LanguageConstants
+from languages.language_constants import LanguageConstants, StatWindowConstants
 from main import Prepper, ModernParadoxGamesPerformer, Settings, TranslatorAccount
 from gui.window_ui.MainWindow import Ui_MainWindow
 import ctypes
@@ -74,8 +74,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.original_directory_lineEdit.editingFinished.connect(self.__original_directory_changed)
         self.__ui.previous_directory_lineEdit.editingFinished.connect(self.__previous_directory_changed)
         self.__ui.target_directory_lineEdit.editingFinished.connect(self.__target_directory_changed)
-        self.__ui.selector_original_language_comboBox.currentTextChanged.connect(self.__original_language_changed)
-        self.__ui.selector_target_language_comboBox.currentTextChanged.connect(self.__target_language_changed)
 
         self.__ui.select_game_comboBox.currentTextChanged.connect(self.__game_changed)
         self.__ui.selector_game_supported_source_language_comboBox.currentTextChanged.connect(
@@ -178,21 +176,24 @@ class MainWindow(QtWidgets.QMainWindow):
     def translator_api_changed(self):
         self.__translator.set_new_api_service(api_service=self.__settings.get_translator_api(),
                                               api_key=self.__translator_accounts.get_translator_account(
-                                                  self.__settings.get_translator_api()))
+                                                  self.__settings.get_translator_api()).get('api_key'),
+                                              last_source=self.__ui.selector_original_language_comboBox.currentText(),
+                                              last_target=self.__ui.selector_target_language_comboBox.currentText())
         self.__ui.selector_original_language_comboBox.clear()
         self.__ui.selector_target_language_comboBox.clear()
-        languages = self.__translator.get_supported_languages()
-        self.__ui.selector_original_language_comboBox.addItems(languages)
-        self.__ui.selector_target_language_comboBox.addItems(languages)
-        self.__ui.selector_original_language_comboBox.setCurrentText(self.__settings.get_last_original_language())
-        self.__ui.selector_target_language_comboBox.setCurrentText(self.__settings.get_last_target_language())
+        source_languages = self.__translator.get_source_supported_languages()
+        target_languages = self.__translator.get_target_supported_languages()
+        self.__ui.selector_original_language_comboBox.addItems(source_languages)
+        self.__ui.selector_target_language_comboBox.addItems(target_languages)
+        self.__ui.selector_original_language_comboBox.setCurrentText(self.__translator.get_source_language())
+        self.__ui.selector_target_language_comboBox.setCurrentText(self.__translator.get_target_language())
 
     @logger.catch()
     def __init_available_languages(self):
         self.__ui.selector_original_language_comboBox.clear()
         self.__ui.selector_target_language_comboBox.clear()
-        self.__ui.selector_original_language_comboBox.addItems(self.__translator.get_supported_languages())
-        self.__ui.selector_target_language_comboBox.addItems((self.__translator.get_supported_languages()))
+        self.__ui.selector_original_language_comboBox.addItems(self.__translator.get_source_supported_languages())
+        self.__ui.selector_target_language_comboBox.addItems((self.__translator.get_target_supported_languages()))
 
     @logger.catch()
     def __preset_values(self):
@@ -209,9 +210,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__ui.previous_directory_lineEdit.setText(last_previous_path)
         self.__ui.target_directory_lineEdit.setText(last_target_path)
 
-        if last_original_language in self.__translator.get_supported_languages():
+        if last_original_language in self.__translator.get_source_supported_languages():
             self.__ui.selector_original_language_comboBox.setCurrentText(last_original_language)
-        if last_target_language in self.__translator.get_supported_languages():
+        if last_target_language in self.__translator.get_target_supported_languages():
             self.__ui.selector_target_language_comboBox.setCurrentText(last_target_language)
 
         self.__game_directory_changed()
@@ -246,6 +247,7 @@ class MainWindow(QtWidgets.QMainWindow):
             set_translators()
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
+        StatWindowConstants.retranslate()
         self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
         self.__init_help_icons()
         self.__init_menubar()
@@ -404,12 +406,6 @@ class MainWindow(QtWidgets.QMainWindow):
             target=self.__ui.selector_game_supported_target_language_comboBox.currentText())
         self.__previous_directory_changed()
 
-    def __original_language_changed(self, *args, **kwargs):
-        self.__translator.set_new_source_language(self.__ui.selector_original_language_comboBox.currentText())
-
-    def __target_language_changed(self):
-        self.__translator.set_new_target_language(self.__ui.selector_target_language_comboBox.currentText())
-
     def __need_translate_changed(self):
         if self.__ui.need_translation_checkBox.isChecked():
             self.__ui.need_translate_scrollArea.setEnabled(True)
@@ -530,6 +526,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __run(self):
         self.__ui.run_pushButton.setEnabled(False)
+        self.__translator.set_new_source_language(self.__ui.selector_original_language_comboBox.currentText())
+        self.__translator.set_new_target_language(self.__ui.selector_target_language_comboBox.currentText())
+
         self.__settings.set_last_languages(original=self.__ui.selector_original_language_comboBox.currentText(),
                                            target=self.__ui.selector_target_language_comboBox.currentText())
         self.__settings.save_settings_data()
