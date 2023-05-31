@@ -16,6 +16,10 @@ class FileInfoData:
             'name': StatWindowConstants.lines_in_file_len,
             'value': 0
         }
+        self.new_lines = {
+            'name': StatWindowConstants.new_lines,
+            'value': []
+        }
         self.translated_lines = {
             'name': StatWindowConstants.translated_lines,
             'value': []
@@ -43,6 +47,9 @@ class FileInfoData:
     def set_lines_in_files(self, amount):
         self.lines_in_files['value'] = amount
 
+    def add_new_line(self, line_number):
+        self.new_lines['value'].append(line_number + 1)
+
     def add_translated_line(self, line_number):
         self.translated_lines['value'].append(line_number + 1)
 
@@ -60,11 +67,12 @@ class FileInfoData:
 
     def get_file_data(self):
         return {'title': self.title,
-                'expanded_data': (self.used_api, self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
-                                  self.lines_from_previous_version, self.lines_with_errors, self.process_time)}
+                'expanded_data': (self.used_api, self.lines_in_files, self.new_lines, self.translated_lines,
+                                  self.lines_from_vanilla_loc, self.lines_from_previous_version,
+                                  self.lines_with_errors, self.process_time)}
 
     def get_file_data_for_csv(self):
-        rows = [{'name': self.title}, self.used_api, self.lines_in_files, self.translated_lines,
+        rows = [{'name': self.title}, self.used_api, self.lines_in_files, self.new_lines, self.translated_lines,
                 self.lines_from_vanilla_loc, self.lines_from_previous_version, self.lines_with_errors,
                 self.process_time, {'name': ''}]
         return rows
