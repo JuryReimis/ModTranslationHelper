@@ -6,6 +6,7 @@ from typing import KeysView
 
 from PyQt5.QtCore import QObject, pyqtSignal
 from deep_translator import GoogleTranslator
+from deepl import QuotaExceededException
 
 from info_data import InfoData, FileInfoData
 from languages.language_constants import LanguageConstants
@@ -584,7 +585,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
             return self._translate_line(translator=self._translator, key_value=key_value)
 
     @logger.catch()
-    def _translate_line(self, translator: GoogleTranslator | None, key_value: dict) -> str:
+    def _translate_line(self, translator: TranslatorManager | None, key_value: dict) -> str:
         r"""На вход должна подаваться строка с уже обрезанным символом переноса строки"""
         if self._current_process_file in self._need_translate_list:
             translate_flag = True
@@ -607,11 +608,23 @@ class ModernParadoxGamesPerformer(BasePerformer):
                     normal_string = self._modify_line(line=translated_line, flag="return_normal_view")
                     self.file_info_data.add_translated_line(self._current_line_number)
                     self.info_data.add_translated_chars(len(modified_line[1:-1]))
+                    self.file_info_data.add_api_service(translator.get_api_name())
                     if self._disable_original_line:
                         return " ".join((key_value["key"],
                                          key_value["value"].replace(localization_value, f'\"{normal_string}\"'),
                                          '#NT!'))
                     return " ".join((key_value["key"], key_value["value"], f" <\"{normal_string}\">", " #NT!"))
+                except QuotaExceededException as error_text:
+                    error_text = f'{LanguageConstants.error_quota_exceeded} - {error_text}'
+                    logger.warning(error_text)
+                    translator.set_new_api_service(api_service='GoogleTranslator',
+                                                   last_source=translator.get_source_language(),
+                                                   last_target=translator.get_target_language())
+                    self.info_console_value.emit(f'{LanguageConstants.api_service_changed}{translator.get_api_name()}')
+                    self.file_info_data.add_api_service('GoogleTranslator')
+                    self.info_data.add_api_service('GoogleTranslator')
+                    self.info_console_value.emit(self._change_text_style(error_text, 'red'))
+                    return self._translate_line(translator=translator, key_value=key_value)
                 except Exception as error:
                     self.file_info_data.add_line_with_error(self._current_line_number)
                     error_text = f"{LanguageConstants.error_with_translation}\n{key_value['value']} {key_value['value']}\n{error}\n"
@@ -640,6 +653,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
                 self._create_original_language_dictionary(original_file_full_path)
                 amount_lines = len(self._original_language_dictionary)
                 self.file_info_data.set_lines_in_files(amount_lines)
+                self.info_data.add_api_service(self._translator.get_api_name())
                 for line_number, key_value in self._original_language_dictionary.items():
                     self._current_line_number = line_number
                     self._create_translated_list(key_value=key_value)
