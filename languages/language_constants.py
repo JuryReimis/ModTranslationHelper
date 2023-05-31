@@ -117,6 +117,7 @@ class StatWindowConstants:
 
     used_service_apis = ''
     lines_in_file_len = ''
+    new_lines = ''
     translated_lines = ''
     lines_from_vanilla = ''
     lines_from_previous_version = ''
@@ -140,6 +141,7 @@ class StatWindowConstants:
         cls.open_statements_directory = _translate("StatWindow", "Открыть директорию с отчетами")
         cls.used_service_apis = _translate("StatWindow", "Использованные сервисы перевода")
         cls.lines_in_file_len = _translate("StatWindow", "Количество строк в файле")
+        cls.new_lines = _translate("StatWindow", "Новые строки")
         cls.translated_lines = _translate("StatWindow", "Список переведенных строк")
         cls.lines_from_vanilla = _translate("StatWindow", "Список строк из ваниллы")
         cls.lines_from_previous_version = _translate("StatWindow", "Список строк из предыдущей версии перевода")
