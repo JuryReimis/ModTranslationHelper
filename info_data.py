@@ -1,35 +1,44 @@
 from pathlib import Path
 
+from languages.language_constants import StatWindowConstants
+
 
 class FileInfoData:
     title = ''
 
     def __init__(self, filename: Path):
         self.title = filename
+        self.used_api = {
+            'name': StatWindowConstants.used_service_apis,
+            'value': set()
+        }
         self.lines_in_files = {
-            'name': 'Количество строк в файле',
+            'name': StatWindowConstants.lines_in_file_len,
             'value': 0
         }
         self.translated_lines = {
-            'name': 'Переведенные строки',
+            'name': StatWindowConstants.translated_lines,
             'value': []
         }
         self.lines_from_vanilla_loc = {
-            'name': 'Строки из ваниллы',
+            'name': StatWindowConstants.lines_from_vanilla,
             'value': []
         }
         self.lines_from_previous_version = {
-            'name': 'Строки из предыдущей версии',
+            'name': StatWindowConstants.lines_from_previous_version,
             'value': []
         }
         self.lines_with_errors = {
-            'name': 'Строки с ошибками',
+            'name': StatWindowConstants.lines_with_errors,
             'value': []
         }
         self.process_time = {
-            'name': 'Время выполнения',
+            'name': StatWindowConstants.time_of_process,
             'value': 0
         }
+
+    def add_api_service(self, api_name: str):
+        self.used_api['value'].add(api_name)
 
     def set_lines_in_files(self, amount):
         self.lines_in_files['value'] = amount
@@ -51,12 +60,13 @@ class FileInfoData:
 
     def get_file_data(self):
         return {'title': self.title,
-                'expanded_data': (self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
+                'expanded_data': (self.used_api, self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
                                   self.lines_from_previous_version, self.lines_with_errors, self.process_time)}
 
     def get_file_data_for_csv(self):
-        rows = [{'name': self.title}, self.lines_in_files, self.translated_lines, self.lines_from_vanilla_loc,
-                self.lines_from_previous_version, self.lines_with_errors, self.process_time, {'name': ''}]
+        rows = [{'name': self.title}, self.used_api, self.lines_in_files, self.translated_lines,
+                self.lines_from_vanilla_loc, self.lines_from_previous_version, self.lines_with_errors,
+                self.process_time, {'name': ''}]
         return rows
 
 
@@ -65,18 +75,18 @@ class InfoData:
     def __init__(self, mod_name="Mod name"):
         self.title = mod_name
         self.translated_files = {
-            'name': 'Переведено файлов',
+            'name': StatWindowConstants.translated_files,
             'value': 0
         }
 
         self.translated_chars = {
-            'name': 'Переведено символов',
+            'name': StatWindowConstants.translated_chars,
             'value': 0
         }
 
         self.used_api = {
-            'name': 'Использованные апи',
-            'value': None
+            'name': StatWindowConstants.used_service_apis,
+            'value': set()
         }
 
         self.files_info = {}
@@ -90,11 +100,14 @@ class InfoData:
     def add_translated_chars(self, chars):
         self.translated_chars['value'] += chars
 
+    def add_api_service(self, api_name: str):
+        self.used_api['value'].add(api_name)
+
     def get_data_for_general(self):
         return {'title': self.title, 'expanded_data': (self.translated_files, self.translated_chars, self.used_api)}
 
     def get_data_for_csv(self):
-        rows = [{'name': self.title}, self.translated_files, self.translated_chars, {'name': ''}]
+        rows = [{'name': self.title}, self.translated_files, self.translated_chars, self.used_api, {'name': ''}]
         for file in self.files_info.values():
             rows += file.get_file_data_for_csv()
         return rows
