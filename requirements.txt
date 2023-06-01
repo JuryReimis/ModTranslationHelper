@@ -1,0 +1,4 @@
+PyQt5>=5.15.7
+QtAwesome>=1.2.3
+loguru>=0.6.0
+deepl>=1.14.0
