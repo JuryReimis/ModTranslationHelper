@@ -8,7 +8,7 @@ class ShieldedValues:
         r"\$\S*?\$",
         r"£\S*?£",
         r"£\S*[^\"]",
-        r"#\S*[^\"]",
+        r"#\S*[^\"|^ ]",
     ]
 
     @classmethod
