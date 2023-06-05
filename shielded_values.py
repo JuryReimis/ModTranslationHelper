@@ -4,11 +4,11 @@ class ShieldedValues:
     wrapped = [
         r"\[.*?\]",
         r"§\S*?§",
+        r"§\S+?",
         r"\$\S*?\$",
         r"£\S*?£",
         r"£\S*[^\"]",
-        r"#\S*[^\"]",
-
+        r"#\S*[^\"|^ ]",
     ]
 
     @classmethod
