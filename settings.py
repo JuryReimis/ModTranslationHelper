@@ -6,4 +6,4 @@ TRANSLATIONS_DIR = BASE_DIR / 'languages'
 HOME_DIR = Path.home()
 SCREEN_SIZE = None
 
-PROGRAM_VERSION = '1.4.0'
+PROGRAM_VERSION = '1.4.1'
