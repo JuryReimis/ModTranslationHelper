@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 from deep_translator.exceptions import ServerException
+from deepl import AuthorizationException
 from loguru import logger
 
 from gui.dialog_window import CustomDialog
@@ -49,7 +50,10 @@ class AddAccountDataWindow(QtWidgets.QDialog):
     def __validate_key(self):
         try:
             if self.__ui.api_key_lineEdit.text():
-                TranslatorManager(api_key=self.__ui.api_key_lineEdit.text(), api_service=self.__api_name).translate('t')
+                exception = TranslatorManager(api_key=self.__ui.api_key_lineEdit.text(),
+                                              api_service=self.__api_name).raise_authorization_exception()
+                if isinstance(exception, AuthorizationException):
+                    raise exception
                 self.__key_validation = True
                 self.__ui.save_pushButton.setEnabled(True)
             else:
@@ -57,10 +61,10 @@ class AddAccountDataWindow(QtWidgets.QDialog):
                 error = CustomDialog(text='Введите ключ!')
                 error.exec_()
                 self.__key_validation = False
-        except ServerException as error:
+        except (ServerException, AuthorizationException) as error:
             logger.warning(f'{error}')
             self.__key_validation = False
-            error = CustomDialog(text=f'Ключ недействителен!')
+            error = CustomDialog(text=f'Ключ {self.__ui.api_key_lineEdit.text()} недействителен!')
             error.exec_()
 
         self.__change_icon()
