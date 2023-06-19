@@ -362,7 +362,7 @@ class BasePerformer(QObject):
         self._shielded_values = ShieldedValues.get_common_pattern()
 
         self._start_running_time = None
-        self._original_language_dictionary = {}
+        self._original_language_list = {}
         self._current_process_file: str = ''
         self._current_original_lines = []
         self._original_vanilla_dictionary = {}
@@ -511,11 +511,10 @@ class ModernParadoxGamesPerformer(BasePerformer):
                         'value': " No order."'},
         Здесь 11 - номер строки, а key - ключ(идентификатор) полной строки value.
         А также в value уже обрезаны пробелы и  символы переноса строки справа"""
-        self._original_language_dictionary = {}
-        ordered_dictionary = ModernParadoxParser(filename=filename).parse_file()
-        self._original_language_dictionary = {num_str: {"key": key_value[0], "value": key_value[1]} for
-                                              num_str, key_value in enumerate(ordered_dictionary.items())}
-        self._translated_list = ['' for _ in range(len(self._original_language_dictionary))]
+        self._original_language_list = []
+        self._original_language_list = ModernParadoxParser(filename=filename).parse_file(get_list=True)
+        logger.info(f'List with key_value: {self._original_language_list}')
+        self._translated_list = ['' for _ in range(len(self._original_language_list))]
 
     @logger.catch()
     def _create_game_localization_dictionary(self):
@@ -526,10 +525,10 @@ class ModernParadoxGamesPerformer(BasePerformer):
         target_vanilla_path = self._paths.get_game_path() / self._target_language
         for file in original_vanilla_path.rglob('*'):
             lines_dictionary = ModernParadoxParser(filename=file).parse_file()
-            self._original_vanilla_dictionary |= dict(lines_dictionary)
+            self._original_vanilla_dictionary |= lines_dictionary
         for file in target_vanilla_path.rglob('*'):
             lines_dictionary = ModernParadoxParser(filename=file).parse_file()
-            self._target_vanilla_dictionary |= dict(lines_dictionary)
+            self._target_vanilla_dictionary |= lines_dictionary
 
     @logger.catch()
     def _create_previous_version_dictionary(self):
@@ -539,7 +538,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
         self._previous_version_dictionary = {"lang": "l_" + self._target_language + ":\n"}
         for file in self._paths.get_previous_files(target_language=self._target_language):
             file: Path
-            self._previous_version_dictionary |= dict(ModernParadoxParser(filename=file).parse_file())
+            self._previous_version_dictionary |= ModernParadoxParser(filename=file).parse_file()
 
     @logger.catch()
     def _create_translated_list(self, key_value: dict):
@@ -600,7 +599,7 @@ class ModernParadoxGamesPerformer(BasePerformer):
         else:
             localization_value = key_value["value"]
             logger.debug(f'Only text from line - {localization_value}')
-            if localization_value is None:
+            if localization_value[1:-1].strip() == "":
                 return " ".join((key_value["key"], key_value["value"]))
             else:
                 try:
@@ -653,10 +652,10 @@ class ModernParadoxGamesPerformer(BasePerformer):
                 self.info_console_value.emit(info)
 
                 self._create_original_language_dictionary(original_file_full_path)
-                amount_lines = len(self._original_language_dictionary)
+                amount_lines = len(self._original_language_list)
                 self.file_info_data.set_lines_in_files(amount_lines)
                 self.info_data.add_api_service(self._translator.get_api_name())
-                for line_number, key_value in self._original_language_dictionary.items():
+                for line_number, key_value in enumerate(self._original_language_list):
                     self._current_line_number = line_number
                     self._create_translated_list(key_value=key_value)
                     info = f"{LanguageConstants.process_string} {line_number + 1}/{amount_lines}\n" \
