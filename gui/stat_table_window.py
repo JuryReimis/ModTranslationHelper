@@ -5,6 +5,7 @@ import time
 from collections.abc import Iterable
 
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtWidgets import QAbstractItemView
 
 import settings
 from gui.window_ui.BaseTable import Ui_table_for_stat
@@ -45,9 +46,19 @@ class BaseTable(QtWidgets.QWidget):
             model.appendRow(row)
         self.__ui.tableView.resizeColumnsToContents()
         self.__ui.tableView.resizeRowsToContents()
+        self.__ui.tableView.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.__ui.tableView.setMaximumHeight(self.getQTableWidgetHeight())
+        self.__ui.tableView.setMinimumHeight(self.getQTableWidgetHeight())
 
     def open_button_link(self):
         os.startfile(self.data.get('title'))
+
+    def getQTableWidgetHeight(self):
+        r"""Решение с https://stackoverflow.com/questions/41542934/remove-scrollbar-to-show-full-table"""
+        h = self.__ui.tableView.horizontalHeader().height() + 4
+        for i in range(self.__ui.tableView.model().rowCount()):
+            h += self.__ui.tableView.rowHeight(i)
+        return h
 
 
 class StatTableWindow(QtWidgets.QDialog):
