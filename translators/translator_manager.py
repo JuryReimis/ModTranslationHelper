@@ -1,5 +1,6 @@
 from deep_translator import GoogleTranslator, DeeplTranslator, YandexTranslator
 from deep_translator.exceptions import InvalidSourceOrTargetLanguage, LanguageNotSupportedException
+from deepl import AuthorizationException
 from loguru import logger
 import deepl
 
@@ -11,6 +12,8 @@ class TranslatorManager:
         "YandexTranslator",
         "DeepLTranslator"
     ]
+    source_for_deepl = None
+    target_for_deepl = None
 
     def __init__(
             self,
@@ -62,6 +65,7 @@ class TranslatorManager:
                                                         target=target_language)
                 case 'DeepLTranslator':
                     self._translator = deepl.Translator(auth_key=self._api_key)
+                    self._translator.get_usage()
                     self._init_supported_languages()
                     self.check_same_language_codes(last_source_code, last_target_code)
                     self.source_for_deepl = self.source_supported_languages.get(self._source_language, 'en')
@@ -81,6 +85,16 @@ class TranslatorManager:
         except LanguageNotSupportedException:
             logger.warning(
                 f'Source {self._source_language} and target {self._target_language} not supported in {self._api_service}')
+        except AuthorizationException as error:
+            logger.warning(f'AuthorizationException {error}')
+
+    def raise_authorization_exception(self):
+        try:
+            self._translator.get_usage()
+        except AuthorizationException as error:
+            return AuthorizationException(str(error))
+        except Exception:
+            return None
 
     def set_new_api_service(self, api_service, api_key=None, last_source='english', last_target='russian'):
         self._api_service = api_service
@@ -112,6 +126,7 @@ class TranslatorManager:
     def get_api_name(self):
         return self._api_service
 
+    @logger.catch()
     def translate(self, text: str):
         match self._api_service:
             case 'GoogleTranslator':
