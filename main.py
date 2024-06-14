@@ -456,12 +456,20 @@ class BasePerformer(QObject):
                 if regular_groups:
                     for step in regular_groups:
                         self._modified_values[shadow_number] = step
-                        line = line.replace(step, f"§_{shadow_number}")
+                        if self._translator == "GoogleTranslator":
+                            line = line.replace(step, f"☻_{shadow_number}")
+                        elif self._translator == "DeepLTranslator":
+                            line = line.replace(step, f'<span translate="no">{step}</span>')
                         shadow_number += 1
                 return line
             case "return_normal_view":
-                for key, value in self._modified_values.items():
-                    line = line.replace(f'§_{key}', value)
+                if self._translator == "GoogleTranslator":
+                    for key, value in self._modified_values.items():
+                        line = line.replace(f'☻_{key}', value)
+                if self._translator == "DeepLTranslator":
+                    tags = re.findall(pattern=r'(<[^>]*translate=\"no\"[^>]*>).*?(<[^>]*>)', string=line)
+                    for open_tag, close_tag in tags:
+                        line = line.replace(open_tag, '').replace(close_tag, '')
                 return line
             case _:
                 self.info_console_value(LanguageConstants.error_with_modification)
