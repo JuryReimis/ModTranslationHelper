@@ -120,6 +120,13 @@ class TranslatorManager:
                 self._translator: deepl.Translator
                 return self._translator.translate_text(text=text,
                                                        source_lang=self.source_for_deepl,
-                                                       target_lang=self.target_for_deepl).text
+                                                       target_lang=self.target_for_deepl,
+                                                       tag_handling='html').text
             case _:
                 return self._translator.translate(text)
+
+    def __eq__(self, other):
+        if self._api_service == other:
+            return True
+        else:
+            return False
