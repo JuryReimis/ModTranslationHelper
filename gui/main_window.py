@@ -7,8 +7,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import pyqtSlot, QSize
-from PyQt5.QtWidgets import QLabel
+from PyQt5.QtCore import pyqtSlot
 from loguru import logger
 
 from gui.stat_table_window import StatTableWindow
@@ -16,13 +15,13 @@ from info_data import InfoData
 from settings import BASE_DIR, HOME_DIR, TRANSLATIONS_DIR, SCREEN_SIZE, PROGRAM_VERSION
 from gui.dialog_window import CustomDialog
 from gui.settings_window import SettingsWindow
-from languages.language_constants import LanguageConstants, StatWindowConstants
+from languages.language_constants import LanguageConstants, StatWindowConstants, SettingsWindowConstants
 from main import Prepper, ModernParadoxGamesPerformer, Settings, TranslatorAccount
 from gui.window_ui.MainWindow import Ui_MainWindow
 import ctypes
-import qtawesome as qta
 
 from translators.translator_manager import TranslatorManager
+from utils.gui.info_utils import AddInfoIcons
 
 if hasattr(QtCore.Qt, 'AA_EnableHighDpiScaling'):
     QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
@@ -247,6 +246,7 @@ class MainWindow(QtWidgets.QMainWindow):
             set_translators()
         self.__ui.retranslateUi(self)
         LanguageConstants.retranslate()
+        SettingsWindowConstants.retranslate()
         StatWindowConstants.retranslate()
         self.__ui.program_version_label.setText(f'{LanguageConstants.program_version} {PROGRAM_VERSION}')
         self.__init_help_icons()
@@ -541,6 +541,7 @@ class MainWindow(QtWidgets.QMainWindow):
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes(),
             disable_original_line=self.__ui.disable_original_line_checkBox.isChecked(),
+            protection_symbol=self.__settings.get_protection_symbol(),
         )
 
         self.__running_thread = QtCore.QThread()
@@ -556,32 +557,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.__running_thread.started.connect(self.__performer.run)
 
         self.__running_thread.start()
-
-
-class AddInfoIcons:
-    stylesheet = "QToolTip { color: #29ab87;" \
-                 " font-size: 18px;" \
-                 " font-weight: bold; }"
-
-    def __init__(self, layouts: dict):
-        for layout, text in layouts.items():
-            layout: QtWidgets.QHBoxLayout
-            info_icon = layout.itemAt(1)
-            if not info_icon:
-                info_icon = self.get_icon()
-                info_icon.setToolTip(text)
-                info_icon.setStyleSheet(self.stylesheet)
-                layout.addWidget(info_icon)
-
-            else:
-                info_icon.widget().setStyleSheet(self.stylesheet)
-                info_icon.widget().setToolTip(text)
-
-    @staticmethod
-    def get_icon():
-        icon = QLabel()
-        icon.setPixmap(qta.icon('fa5.question-circle').pixmap(QSize(16, 16)))
-        return icon
 
 
 class ResizeWindow:

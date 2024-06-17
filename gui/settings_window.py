@@ -2,9 +2,11 @@ from PyQt5 import QtWidgets
 from loguru import logger
 
 from gui.add_account_data_window import AddAccountDataWindow
+from languages.language_constants import SettingsWindowConstants
 from main import Settings, TranslatorAccount
 from translators.translator_manager import TranslatorManager
 from gui.window_ui.SettingsWindow import Ui_Settings
+from utils.gui.info_utils import AddInfoIcons
 
 
 class SettingsWindow(QtWidgets.QDialog):
@@ -18,13 +20,30 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__account_data = account_data
         self.__set_initial_values()
 
+        self.__init_icons()
+
         self.__ui.apis_comboBox.currentTextChanged.connect(self.__change_current_api)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
+        self.__ui.protection_symbol_lineEdit.textChanged.connect(self.set_protection_symbol)
+
+    def __init_info_layouts(self):
+        self.__info_layouts = {
+            self.__ui.protection_symbol_horizontalLayout: SettingsWindowConstants.protection_symbol_help,
+        }
+
+    def __init_icons(self):
+        self.__init_info_layouts()
+        AddInfoIcons(self.__info_layouts)
+
 
     @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(TranslatorManager.supported_apis)
-        self.__ui.apis_comboBox.setCurrentText(self.__settings.get_translator_api())
+        selected_api = self.__settings.get_translator_api()
+        self.__ui.apis_comboBox.setCurrentText(selected_api)
+        self.__ui.protection_symbol_lineEdit.setText(self.__settings.get_protection_symbol())
+        if selected_api in ['GoogleTranslator', ]:
+            self.set_protection_symbols_visible(True)
 
     @logger.catch()
     def __change_current_api(self, selected_api):
@@ -36,7 +55,17 @@ class SettingsWindow(QtWidgets.QDialog):
                                                         api_name=selected_api,
                                                         account_data=self.__account_data)
                 add_account_data.exec_()
+                self.set_protection_symbols_visible()
+            case _:
+                self.set_protection_symbols_visible(True)
         self.parent().translator_api_changed()
+
+    def set_protection_symbols_visible(self, visible: bool = False):
+        self.__ui.protection_symbol_label.setVisible(visible)
+        self.__ui.protection_symbol_lineEdit.setVisible(visible)
+
+    def set_protection_symbol(self, symbol: str):
+        self.__settings.set_protection_symbol(symbol)
 
     def set_default(self):
         self.__ui.apis_comboBox.setCurrentText('GoogleTranslator')

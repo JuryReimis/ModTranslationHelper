@@ -190,6 +190,7 @@ class Settings:
         'last_target_language': "russian",
 
         'translator_api': "GoogleTranslator",
+        'protection_symbol': "☻",
 
         'app_language': "Русский",
         'games': {},
@@ -270,6 +271,9 @@ class Settings:
     def set_translator_api(self, translator_api):
         self.__settings['translator_api'] = translator_api
 
+    def set_protection_symbol(self, symbol):
+        self.__settings['protection_symbol'] = symbol
+
     def set_app_language(self, value):
         self.__settings['app_language'] = value
 
@@ -293,6 +297,9 @@ class Settings:
 
     def get_translator_api(self):
         return self.__settings.get('translator_api', None)
+
+    def get_protection_symbol(self):
+        return self.__settings.get('protection_symbol', None)
 
     def get_app_language(self):
         return self.__settings.get('app_language', 0)
@@ -349,7 +356,8 @@ class BasePerformer(QObject):
             target_language: str = None,
             need_translate: bool = False,
             need_translate_tuple: tuple | None = None,
-            disable_original_line: bool = False
+            disable_original_line: bool = False,
+            protection_symbol: str = "☻"
     ):
         super(BasePerformer, self).__init__()
         self._paths = paths
@@ -358,6 +366,7 @@ class BasePerformer(QObject):
         self._translator = translator
         self._need_translate_list = need_translate_tuple if need_translate is True else tuple()
         self._disable_original_line = disable_original_line
+        self._protection_symbol = protection_symbol
 
         self._shielded_values = ShieldedValues.get_common_pattern()
 
@@ -457,7 +466,7 @@ class BasePerformer(QObject):
                     for step in regular_groups:
                         self._modified_values[shadow_number] = step
                         if self._translator == "GoogleTranslator":
-                            line = line.replace(step, f"☻_{shadow_number}")
+                            line = line.replace(step, f"{self._protection_symbol}_{shadow_number}")
                         elif self._translator == "DeepLTranslator":
                             line = line.replace(step, f'<span translate="no">{step}</span>')
                         shadow_number += 1
