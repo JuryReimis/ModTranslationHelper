@@ -8,7 +8,7 @@ class TranslatorManager:
 
     supported_apis = [
         "GoogleTranslator",
-        "YandexTranslator",
+        # "YandexTranslator",
         "DeepLTranslator"
     ]
 
@@ -36,8 +36,8 @@ class TranslatorManager:
                 self._translator: deepl.Translator
                 self.source_supported_languages = {language.name: language.code.lower() for language in self._translator.get_source_languages()}
                 self.target_supported_languages = {language.name: language.code.lower() for language in self._translator.get_target_languages()}
-            case 'YandexTranslator':
-                self.source_supported_languages = self.target_supported_languages = YandexTranslator(api_key='api_key').get_supported_languages(as_dict=True)
+            # case 'YandexTranslator':
+            #     self.source_supported_languages = self.target_supported_languages = YandexTranslator(api_key='api_key').get_supported_languages(as_dict=True)
 
     @logger.catch()
     def check_same_language_codes(self, last_source_code, last_target_code):
@@ -66,14 +66,14 @@ class TranslatorManager:
                     self.check_same_language_codes(last_source_code, last_target_code)
                     self.source_for_deepl = self.source_supported_languages.get(self._source_language, 'en')
                     self.target_for_deepl = self.target_supported_languages.get(self._target_language, 'ru')
-                case 'YandexTranslator':
-                    self._init_supported_languages()
-                    self.check_same_language_codes(last_source_code, last_target_code)
-                    source_language = self.source_supported_languages.get(self._source_language)
-                    target_language = self.target_supported_languages.get(self._target_language)
-                    self._translator = YandexTranslator(api_key=self._api_key,
-                                                        source=source_language,
-                                                        target=target_language)
+                # case 'YandexTranslator':
+                #     self._init_supported_languages()
+                #     self.check_same_language_codes(last_source_code, last_target_code)
+                #     source_language = self.source_supported_languages.get(self._source_language)
+                #     target_language = self.target_supported_languages.get(self._target_language)
+                #     self._translator = YandexTranslator(api_key=self._api_key,
+                #                                         source=source_language,
+                #                                         target=target_language)
                 case _:
                     self._translator = None
         except InvalidSourceOrTargetLanguage as error:
