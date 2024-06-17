@@ -2,9 +2,11 @@ from PyQt5 import QtWidgets
 from loguru import logger
 
 from gui.add_account_data_window import AddAccountDataWindow
+from languages.language_constants import SettingsWindowConstants
 from main import Settings, TranslatorAccount
 from translators.translator_manager import TranslatorManager
 from gui.window_ui.SettingsWindow import Ui_Settings
+from utils.gui.info_utils import AddInfoIcons
 
 
 class SettingsWindow(QtWidgets.QDialog):
@@ -18,9 +20,21 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__account_data = account_data
         self.__set_initial_values()
 
+        self.__init_icons()
+
         self.__ui.apis_comboBox.currentTextChanged.connect(self.__change_current_api)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
         self.__ui.protection_symbol_lineEdit.textChanged.connect(self.set_protection_symbol)
+
+    def __init_info_layouts(self):
+        self.__info_layouts = {
+            self.__ui.protection_symbol_horizontalLayout: SettingsWindowConstants.protection_symbol_help,
+        }
+
+    def __init_icons(self):
+        self.__init_info_layouts()
+        AddInfoIcons(self.__info_layouts)
+
 
     @logger.catch()
     def __set_initial_values(self):
