@@ -541,6 +541,7 @@ class MainWindow(QtWidgets.QMainWindow):
             need_translate=self.__ui.need_translation_checkBox.isChecked(),
             need_translate_tuple=self.__get_all_checkboxes(),
             disable_original_line=self.__ui.disable_original_line_checkBox.isChecked(),
+            protection_symbol=self.__settings.get_protection_symbol(),
         )
 
         self.__running_thread = QtCore.QThread()
