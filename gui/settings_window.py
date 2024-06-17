@@ -20,14 +20,16 @@ class SettingsWindow(QtWidgets.QDialog):
 
         self.__ui.apis_comboBox.currentTextChanged.connect(self.__change_current_api)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
+        self.__ui.protection_symbol_lineEdit.textChanged.connect(self.set_protection_symbol)
 
     @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(TranslatorManager.supported_apis)
         selected_api = self.__settings.get_translator_api()
         self.__ui.apis_comboBox.setCurrentText(selected_api)
+        self.__ui.protection_symbol_lineEdit.setText(self.__settings.get_protection_symbol())
         if selected_api in ['GoogleTranslator', ]:
-            self.set_protection_symbols_visible()
+            self.set_protection_symbols_visible(True)
 
     @logger.catch()
     def __change_current_api(self, selected_api):
@@ -47,6 +49,9 @@ class SettingsWindow(QtWidgets.QDialog):
     def set_protection_symbols_visible(self, visible: bool = False):
         self.__ui.protection_symbol_label.setVisible(visible)
         self.__ui.protection_symbol_lineEdit.setVisible(visible)
+
+    def set_protection_symbol(self, symbol: str):
+        self.__settings.set_protection_symbol(symbol)
 
     def set_default(self):
         self.__ui.apis_comboBox.setCurrentText('GoogleTranslator')
