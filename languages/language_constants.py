@@ -111,6 +111,19 @@ class LanguageConstants:
         cls.warning_disable_original_line_title = _translate("Constants", "Предупреждение")
 
 
+class SettingsWindowConstants:
+
+    protection_symbol_help = ''
+
+    @classmethod
+    def retranslate(cls):
+        _translate = QtCore.QCoreApplication.translate
+
+        cls.protection_symbol_help = _translate("SettingsWindow", "Внимание!!! Не меняйте эту настройку, если не уверены в том, как это работает\n"
+                                                             "Данный символ используется для подмены значений, которые по тем или иным причинам\n"
+                                                             "могут быть испорчены переводчиком и не должны быть отправлены вместе с основным текстом")
+
+
 class StatWindowConstants:
     open_file = ''
     open_statements_directory = ''
