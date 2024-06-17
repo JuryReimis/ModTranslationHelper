@@ -18,9 +18,8 @@ class SettingsWindow(QtWidgets.QDialog):
 
         self.__settings = settings
         self.__account_data = account_data
-        self.__set_initial_values()
-
         self.__init_icons()
+        self.__set_initial_values()
 
         self.__ui.apis_comboBox.currentTextChanged.connect(self.__change_current_api)
         self.__ui.save_settings_pushButton.clicked.connect(self.save_settings)
@@ -35,7 +34,6 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__init_info_layouts()
         AddInfoIcons(self.__info_layouts)
 
-
     @logger.catch()
     def __set_initial_values(self):
         self.__ui.apis_comboBox.addItems(TranslatorManager.supported_apis)
@@ -43,11 +41,14 @@ class SettingsWindow(QtWidgets.QDialog):
         self.__ui.apis_comboBox.setCurrentText(selected_api)
         self.__ui.protection_symbol_lineEdit.setText(self.__settings.get_protection_symbol())
         if selected_api in ['GoogleTranslator', ]:
-            self.set_protection_symbols_visible(True)
+            self.set_protection_symbols_enable(True)
+        else:
+            self.set_protection_symbols_enable()
 
     @logger.catch()
     def __change_current_api(self, selected_api):
         self.__settings.set_translator_api(selected_api)
+
         match selected_api:
             case 'YandexTranslator' | 'DeepLTranslator':
                 add_account_data = AddAccountDataWindow(parent=self,
@@ -55,14 +56,15 @@ class SettingsWindow(QtWidgets.QDialog):
                                                         api_name=selected_api,
                                                         account_data=self.__account_data)
                 add_account_data.exec_()
-                self.set_protection_symbols_visible()
+                self.set_protection_symbols_enable()
             case _:
-                self.set_protection_symbols_visible(True)
+                self.set_protection_symbols_enable(True)
+
         self.parent().translator_api_changed()
 
-    def set_protection_symbols_visible(self, visible: bool = False):
-        self.__ui.protection_symbol_label.setVisible(visible)
-        self.__ui.protection_symbol_lineEdit.setVisible(visible)
+    def set_protection_symbols_enable(self, enable: bool = False):
+        self.__ui.protection_symbol_label.setEnabled(enable)
+        self.__ui.protection_symbol_lineEdit.setEnabled(enable)
 
     def set_protection_symbol(self, symbol: str):
         self.__settings.set_protection_symbol(symbol)
