@@ -21,8 +21,9 @@ class AddInfoIcons:
                 layout.addWidget(info_icon)
 
             else:
-                info_icon.widget().setStyleSheet(self.stylesheet)
-                info_icon.widget().setToolTip(text)
+                widget = info_icon.widget()
+                widget.setStyleSheet(self.stylesheet)
+                widget.setToolTip(text)
 
     @staticmethod
     def get_icon():
